@@ -10,6 +10,7 @@ import {
   creaLegendaPiano,
   decodificaScelta,
   preparaSalvataggioModifiche,
+  validaModificheIntervallo,
   validaModifichePiano,
   type AssegnazioneModificabile,
 } from "./modifiche-piano"
@@ -88,6 +89,15 @@ describe("validazione delle modifiche persistenti", () => {
         positionId: null,
       },
     ])
+  })
+
+  it("accetta modifiche su mesi diversi nello stesso intervallo", () => {
+    expect(
+      validaModificheIntervallo("2026-08-20", "2026-09-10", [
+        { ...mattinoRepartoA, data: "2026-08-31" },
+        { ...mattinoRepartoA, data: "2026-09-01" },
+      ]),
+    ).toHaveLength(2)
   })
 
   it("rifiuta celle duplicate per lavoratore e giorno", () => {

@@ -156,7 +156,7 @@ export function estraiAssegnazioni(m: Modello, s: Stato) {
 export function grigliaPerLavoratore(m: Modello, s: Stato) {
   return m.lavoratori.map((l, li) => ({
     lavoratore: l,
-    giorni: m.date.slice(m.offsetPeriodo).map((data, i) => {
+    giorni: m.date.slice(m.offsetPeriodo, m.fineOffsetPeriodo).map((data, i) => {
       const g = m.offsetPeriodo + i
       const t = s.turnoDelGiorno[li * m.nGiorni + g]
       const p = s.postazioneDelGiorno[li * m.nGiorni + g]

@@ -28,7 +28,8 @@ export const SchemaSuggerimentiPiano = z.object({
 export type SuggerimentiPiano = z.infer<typeof SchemaSuggerimentiPiano>
 
 export interface ContestoSuggerimentiPiano {
-  mese: string
+  dal: string
+  al: string
   segnalazioni: {
     gravita: string
     tipo: string

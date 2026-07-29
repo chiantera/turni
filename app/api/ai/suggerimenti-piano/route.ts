@@ -3,6 +3,12 @@ import { NextResponse } from "next/server"
 import { generaSuggerimentiPiano } from "@/lib/ai/analisi-segnalazioni"
 import { ErroreConfigurazioneAI } from "@/lib/ai/provider"
 import type { ContestoSuggerimentiPiano } from "@/lib/ai/suggerimenti-piano"
+import {
+  ErroreIntervalloPianificazione,
+  intervalloDaParametri,
+  mesiIntervallo,
+  segnalazioneRilevante,
+} from "@/lib/dati/intervallo"
 import { caricaDatiSolver } from "@/lib/dati/piano"
 import { creaClientServer, ePianificatore } from "@/lib/supabase/server"
 
@@ -15,36 +21,59 @@ export async function POST(req: Request) {
   }
 
   const corpo = await req.json().catch(() => ({}))
-  const mese = typeof corpo.mese === "string" ? corpo.mese : ""
-  if (!/^\d{4}-\d{2}-01$/.test(mese)) {
-    return NextResponse.json({ errore: "Mese non valido." }, { status: 400 })
+  let intervallo
+  try {
+    intervallo = intervalloDaParametri({
+      mese:
+        typeof corpo.mese === "string"
+          ? corpo.mese
+          : typeof corpo.dal === "string"
+            ? corpo.dal
+            : "",
+      dal: typeof corpo.dal === "string" ? corpo.dal : undefined,
+      al: typeof corpo.al === "string" ? corpo.al : undefined,
+    })
+  } catch (errore) {
+    const messaggio =
+      errore instanceof ErroreIntervalloPianificazione
+        ? errore.message
+        : "Intervallo non valido."
+    return NextResponse.json({ errore: messaggio }, { status: 400 })
   }
 
   const sb = await creaClientServer()
   try {
-    const piano = await sb
+    const piani = await sb
       .from("schedules")
       .select("id")
-      .eq("mese", mese)
-      .maybeSingle()
-    if (piano.error) throw piano.error
-    if (!piano.data) {
-      return NextResponse.json({ errore: "Nessun piano per questo mese." }, { status: 404 })
+      .in("mese", mesiIntervallo(intervallo.dal, intervallo.al))
+    if (piani.error) throw piani.error
+    if (!piani.data?.length) {
+      return NextResponse.json({ errore: "Nessun piano per questo intervallo." }, { status: 404 })
     }
 
     const segnalazioni = await sb
       .from("violations")
-      .select("gravita, tipo, messaggio, data")
-      .eq("schedule_id", piano.data.id)
+      .select("gravita, tipo, messaggio, data, riferimenti")
+      .in("schedule_id", piani.data.map((piano) => piano.id))
     if (segnalazioni.error) throw segnalazioni.error
-    if (!segnalazioni.data?.length) {
+    const segnalazioniRilevanti = (segnalazioni.data ?? []).filter(
+      (segnalazione) =>
+        segnalazioneRilevante(
+          segnalazione.data,
+          segnalazione.riferimenti,
+          intervallo.dal,
+          intervallo.al,
+        ),
+    )
+    if (!segnalazioniRilevanti.length) {
       return NextResponse.json(
         { errore: "Il piano non contiene segnalazioni da analizzare." },
         { status: 400 },
       )
     }
 
-    const dati = await caricaDatiSolver(mese)
+    const dati = await caricaDatiSolver(intervallo.dal, intervallo.al)
     const postazionePerId = new Map(dati.postazioni.map((p) => [p.id, p.nome]))
     const turnoPerId = new Map(dati.turni.map((t) => [t.id, t]))
     const abilitazioniPerLavoratore = new Map<string, string[]>()
@@ -56,8 +85,14 @@ export async function POST(req: Request) {
     }
 
     const contesto: ContestoSuggerimentiPiano = {
-      mese,
-      segnalazioni: segnalazioni.data.slice(0, 100),
+      dal: intervallo.dal,
+      al: intervallo.al,
+      segnalazioni: segnalazioniRilevanti.slice(0, 100).map((segnalazione) => ({
+        gravita: segnalazione.gravita,
+        tipo: segnalazione.tipo,
+        messaggio: segnalazione.messaggio,
+        data: segnalazione.data,
+      })),
       lavoratori: dati.lavoratori.map((l) => ({
         nome: `${l.nome} ${l.cognome}`,
         oreSettimanali: l.ore_settimanali,
@@ -81,7 +116,7 @@ export async function POST(req: Request) {
     })
 
     await sb.from("ai_interactions").insert({
-      testo: `Analisi delle segnalazioni del piano ${mese}`,
+      testo: `Analisi delle segnalazioni dal ${intervallo.dal} al ${intervallo.al}`,
       risposta: esito as never,
       accettato: false,
       provider: esito.provider,
@@ -95,7 +130,7 @@ export async function POST(req: Request) {
   } catch (errore) {
     const messaggio = errore instanceof Error ? errore.message : "Errore imprevisto."
     await sb.from("ai_interactions").insert({
-      testo: `Analisi delle segnalazioni del piano ${mese}`,
+      testo: `Analisi delle segnalazioni dal ${intervallo.dal} al ${intervallo.al}`,
       errore: messaggio,
     })
     return NextResponse.json(

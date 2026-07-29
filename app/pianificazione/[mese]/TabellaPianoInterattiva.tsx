@@ -17,7 +17,8 @@ import { giornoSettimana } from "@/lib/solver/tempo"
 import type { Tables } from "@/lib/supabase/types"
 
 interface Props {
-  mese: string
+  dal: string
+  al: string
   vista: "lavoratore" | "postazione"
   giorni: string[]
   festivi: string[]
@@ -42,7 +43,8 @@ function chiave(workerId: string, data: string) {
 }
 
 export default function TabellaPianoInterattiva({
-  mese,
+  dal,
+  al,
   vista: vistaIniziale,
   giorni,
   festivi,
@@ -187,7 +189,7 @@ export default function TabellaPianoInterattiva({
       const risposta = await fetch("/api/piano/assegnazioni", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mese, modifiche }),
+        body: JSON.stringify({ dal, al, modifiche }),
       })
       const dati = await risposta.json()
       if (!risposta.ok) throw new Error(dati.errore ?? "Salvataggio non riuscito.")
@@ -217,10 +219,13 @@ export default function TabellaPianoInterattiva({
       <th
         key={g}
         className={`px-1 py-1 border-b border-bordo text-center font-normal min-w-9 ${speciale ? "bg-avviso-tenue" : ""}`}
-        title={festiviSet.has(g) ? "Festivo" : undefined}
+        title={`${g.slice(8, 10)}/${g.slice(5, 7)}/${g.slice(0, 4)}${festiviSet.has(g) ? " · Festivo" : ""}`}
       >
         <div className="text-[10px] text-tenue">{GIORNI_BREVI[dow]}</div>
-        <div className="tabular-nums">{Number(g.slice(8, 10))}</div>
+        <div className="tabular-nums">
+          {Number(g.slice(8, 10))}
+          <span className="text-[9px] text-tenue">/{g.slice(5, 7)}</span>
+        </div>
       </th>
     )
   })
@@ -454,7 +459,7 @@ export default function TabellaPianoInterattiva({
       )}
 
       <p className="no-stampa text-xs text-tenue">
-        Le modifiche manuali sono persistenti. Rigenerare il piano sostituisce comunque l&apos;intero mese.
+        Le modifiche manuali sono persistenti. Rigenerare il piano sostituisce le assegnazioni dell&apos;intervallo selezionato.
       </p>
 
       {editor && (

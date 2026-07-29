@@ -29,10 +29,12 @@ const ETICHETTE_PERCORSO: Record<string, string> = {
 }
 
 export default function SuggerimentiAI({
-  mese,
+  dal,
+  al,
   numeroSegnalazioni,
 }: {
-  mese: string
+  dal: string
+  al: string
   numeroSegnalazioni: number
 }) {
   const [esito, setEsito] = useState<Esito | null>(null)
@@ -46,7 +48,7 @@ export default function SuggerimentiAI({
       const risposta = await fetch("/api/ai/suggerimenti-piano", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mese }),
+        body: JSON.stringify({ dal, al }),
       })
       const dati = await risposta.json()
       if (!risposta.ok) throw new Error(dati.errore ?? "Analisi non riuscita.")

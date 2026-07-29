@@ -160,7 +160,7 @@ export function costruisciCiclicamente(
 
     // Sfasamento: la persona j al giorno g sta nella fase (g + j) mod L.
     // L'offset di partenza è calibrato sul primo giorno del periodo.
-    for (let g = m.offsetPeriodo; g < m.nGiorni; g++) {
+    for (let g = m.offsetPeriodo; g < m.fineOffsetPeriodo; g++) {
       const giorniDaInizio = g - m.offsetPeriodo
       for (let j = 0; j < L; j++) {
         const turnoIdx = ciclo[(giorniDaInizio + j) % L]

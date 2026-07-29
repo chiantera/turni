@@ -1,3 +1,5 @@
+import { fineDelMese, validaIntervallo } from "./intervallo"
+
 export interface AssegnazioneModificabile {
   workerId: string
   data: string
@@ -151,13 +153,12 @@ function dataIsoValida(data: string): boolean {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === data
 }
 
-export function validaModifichePiano(
-  mese: string,
+function validaModificheTra(
+  dal: string,
+  al: string,
   valore: unknown,
+  descrizioneIntervallo: string,
 ): AssegnazioneModificabile[] {
-  if (!/^\d{4}-\d{2}-01$/.test(mese) || !dataIsoValida(mese)) {
-    throw new ErroreModifichePiano("Mese non valido.")
-  }
   if (!Array.isArray(valore) || valore.length > 1000) {
     throw new ErroreModifichePiano("Elenco modifiche non valido.")
   }
@@ -176,8 +177,8 @@ export function validaModifichePiano(
     if (!workerId || !dataIsoValida(data)) {
       throw new ErroreModifichePiano("Lavoratore o data non validi.")
     }
-    if (data.slice(0, 7) !== mese.slice(0, 7)) {
-      throw new ErroreModifichePiano(`La data ${data} è fuori dal mese pianificato.`)
+    if (data < dal || data > al) {
+      throw new ErroreModifichePiano(`La data ${data} è fuori ${descrizioneIntervallo}.`)
     }
     if (Boolean(shiftTypeId) !== Boolean(positionId)) {
       throw new ErroreModifichePiano("Turno e postazione devono essere indicati insieme.")
@@ -196,6 +197,31 @@ export function validaModifichePiano(
     viste.add(chiave)
     return modifica
   })
+}
+
+export function validaModificheIntervallo(
+  dal: string,
+  al: string,
+  valore: unknown,
+): AssegnazioneModificabile[] {
+  try {
+    validaIntervallo(dal, al)
+  } catch (errore) {
+    throw new ErroreModifichePiano(
+      errore instanceof Error ? errore.message : "Intervallo non valido.",
+    )
+  }
+  return validaModificheTra(dal, al, valore, "dall'intervallo pianificato")
+}
+
+export function validaModifichePiano(
+  mese: string,
+  valore: unknown,
+): AssegnazioneModificabile[] {
+  if (!/^\d{4}-\d{2}-01$/.test(mese) || !dataIsoValida(mese)) {
+    throw new ErroreModifichePiano("Mese non valido.")
+  }
+  return validaModificheTra(mese, fineDelMese(mese), valore, "dal mese pianificato")
 }
 
 export function preparaSalvataggioModifiche(

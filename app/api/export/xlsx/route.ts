@@ -1,8 +1,14 @@
 import ExcelJS from "exceljs"
 import { NextResponse } from "next/server"
 
-import { GIORNI_BREVI, nomeMese } from "@/lib/dati/formato"
-import { giorniNelMese, giornoSettimana, primoDelMese } from "@/lib/solver/tempo"
+import { GIORNI_BREVI } from "@/lib/dati/formato"
+import {
+  ErroreIntervalloPianificazione,
+  giorniIntervallo,
+  intervalloDaParametri,
+  mesiIntervallo,
+} from "@/lib/dati/intervallo"
+import { giornoSettimana } from "@/lib/solver/tempo"
 import { creaClientServer, ePianificatore } from "@/lib/supabase/server"
 import type { Tables } from "@/lib/supabase/types"
 
@@ -20,29 +26,46 @@ export async function GET(req: Request) {
     return NextResponse.json({ errore: "Non autorizzato." }, { status: 403 })
   }
 
-  const meseGrezzo = new URL(req.url).searchParams.get("mese")
-  if (!meseGrezzo || !/^\d{4}-\d{2}-\d{2}$/.test(meseGrezzo)) {
-    return NextResponse.json({ errore: "Parametro 'mese' mancante." }, { status: 400 })
+  const parametri = new URL(req.url).searchParams
+  let intervallo
+  try {
+    intervallo = intervalloDaParametri({
+      mese: parametri.get("mese") ?? parametri.get("dal") ?? "",
+      dal: parametri.get("dal") ?? undefined,
+      al: parametri.get("al") ?? undefined,
+    })
+  } catch (errore) {
+    const messaggio =
+      errore instanceof ErroreIntervalloPianificazione
+        ? errore.message
+        : "Intervallo non valido."
+    return NextResponse.json({ errore: messaggio }, { status: 400 })
   }
-  const mese = primoDelMese(meseGrezzo)
-  const nGiorni = giorniNelMese(mese)
-  const giorni = Array.from(
-    { length: nGiorni },
-    (_, i) => `${mese.slice(0, 8)}${String(i + 1).padStart(2, "0")}`,
-  )
+  const { dal, al } = intervallo
+  const giorni = giorniIntervallo(dal, al)
+  const nGiorni = giorni.length
 
   const sb = await creaClientServer()
-  const piano = await sb.from("schedules").select("*").eq("mese", mese).maybeSingle()
-  if (!piano.data) {
-    return NextResponse.json({ errore: "Nessun piano per questo mese." }, { status: 404 })
+  const piani = await sb
+    .from("schedules")
+    .select("id")
+    .in("mese", mesiIntervallo(dal, al))
+  if (piani.error) throw piani.error
+  if (!piani.data?.length) {
+    return NextResponse.json({ errore: "Nessun piano per questo intervallo." }, { status: 404 })
   }
 
   const [lavoratori, turni, postazioni, assegnazioni, festivita] = await Promise.all([
     sb.from("workers").select("*").eq("attivo", true).order("cognome"),
     sb.from("shift_types").select("*"),
     sb.from("positions").select("*"),
-    sb.from("assignments").select("*").eq("schedule_id", piano.data.id),
-    sb.from("holidays").select("data").gte("data", mese).lte("data", giorni[nGiorni - 1]),
+    sb
+      .from("assignments")
+      .select("*")
+      .in("schedule_id", piani.data.map((piano) => piano.id))
+      .gte("data", dal)
+      .lte("data", al),
+    sb.from("holidays").select("data").gte("data", dal).lte("data", al),
   ])
 
   const turnoPerId = new Map((turni.data ?? []).map((t) => [t.id, t]))
@@ -59,13 +82,16 @@ export async function GET(req: Request) {
   wb.created = new Date()
 
   // --- Foglio 1: il tabellone --------------------------------------------
-  const f1 = wb.addWorksheet(`Turni ${nomeMese(mese)}`, {
+  const f1 = wb.addWorksheet("Turni", {
     views: [{ state: "frozen", xSplit: 1, ySplit: 2 }],
     pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1 },
   })
 
   f1.getRow(1).values = ["", ...giorni.map((g) => GIORNI_BREVI[giornoSettimana(g)])]
-  f1.getRow(2).values = ["Lavoratore", ...giorni.map((g) => Number(g.slice(8, 10)))]
+  f1.getRow(2).values = [
+    "Lavoratore",
+    ...giorni.map((g) => `${g.slice(8, 10)}/${g.slice(5, 7)}`),
+  ]
   f1.getRow(1).font = { size: 9, color: { argb: "FF64748B" } }
   f1.getRow(2).font = { bold: true }
   f1.getColumn(1).width = 26
@@ -97,12 +123,12 @@ export async function GET(req: Request) {
         cella.value = t?.codice ?? "?"
         cella.alignment = { horizontal: "center" }
         cella.font = { bold: true, color: { argb: "FFFFFFFF" } }
+        const p = postPerId.get(a.position_id)
         cella.fill = {
           type: "pattern",
           pattern: "solid",
-          fgColor: { argb: `FF${(t?.colore ?? "#64748b").replace("#", "").toUpperCase()}` },
+          fgColor: { argb: `FF${(p?.colore ?? "#64748b").replace("#", "").toUpperCase()}` },
         }
-        const p = postPerId.get(a.position_id)
         cella.note = `${t?.nome ?? ""}${p ? ` — ${p.nome}` : ""}`
       } else {
         const dow = giornoSettimana(g)
@@ -164,7 +190,7 @@ export async function GET(req: Request) {
     headers: {
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="turni-${mese.slice(0, 7)}.xlsx"`,
+      "Content-Disposition": `attachment; filename="turni-${dal}-${al}.xlsx"`,
     },
   })
 }

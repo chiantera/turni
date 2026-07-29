@@ -113,14 +113,16 @@ export interface Regole {
 }
 
 export interface Modello {
-  /** Primo giorno dell'orizzonte, INCLUSA la coda del mese precedente. */
+  /** Primo giorno dell'orizzonte, incluso il contesto precedente. */
   inizioOrizzonte: string
-  /** Primo giorno del mese effettivamente pianificato. */
+  /** Primo giorno dell'intervallo effettivamente pianificato. */
   inizioPeriodo: string
   finePeriodo: string
   nGiorni: number
-  /** Indice (nell'orizzonte) del primo giorno del mese pianificato. */
+  /** Indice (nell'orizzonte) del primo giorno pianificato. */
   offsetPeriodo: number
+  /** Indice esclusivo dell'ultimo giorno pianificato; può seguire contesto futuro. */
+  fineOffsetPeriodo: number
 
   turni: TipoTurno[]
   postazioni: Postazione[]

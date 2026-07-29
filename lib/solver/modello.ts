@@ -94,6 +94,9 @@ export interface RigaAssegnazioneEsistente {
 export interface DatiIngresso {
   /** Mese da pianificare, una data qualsiasi al suo interno. */
   mese: string
+  /** Intervallo inclusivo; se omesso viene pianificato l'intero mese. */
+  dal?: string
+  al?: string
   turni: RigaTurno[]
   postazioni: RigaPostazione[]
   lavoratori: RigaLavoratore[]
@@ -106,7 +109,10 @@ export interface DatiIngresso {
   assegnazioniEsistenti: RigaAssegnazioneEsistente[]
   pesi: Pesi
   regole: Regole
+  /** Giorni precedenti caricati solo come contesto immutabile. */
   giorniContesto?: number
+  /** Giorni successivi caricati solo come contesto immutabile. */
+  giorniContestoDopo?: number
 }
 
 export const PESI_DEFAULT: Pesi = {
@@ -131,14 +137,17 @@ export const REGOLE_DEFAULT: Regole = {
 
 export function costruisciModello(d: DatiIngresso): Modello {
   const giorniContesto = d.giorniContesto ?? 7
+  const giorniContestoDopo = d.giorniContestoDopo ?? 0
 
   // --- Orizzonte -----------------------------------------------------------
-  const inizioPeriodo = primoDelMese(d.mese)
-  const nGiorniPeriodo = giorniNelMese(d.mese)
-  const finePeriodo = aggiungiGiorni(inizioPeriodo, nGiorniPeriodo - 1)
+  const inizioPeriodo = d.dal ?? primoDelMese(d.mese)
+  const finePeriodo =
+    d.al ?? aggiungiGiorni(inizioPeriodo, giorniNelMese(d.mese) - 1)
+  const nGiorniPeriodo = differenzaGiorni(inizioPeriodo, finePeriodo) + 1
   const inizioOrizzonte = aggiungiGiorni(inizioPeriodo, -giorniContesto)
-  const nGiorni = giorniContesto + nGiorniPeriodo
+  const nGiorni = giorniContesto + nGiorniPeriodo + giorniContestoDopo
   const offsetPeriodo = giorniContesto
+  const fineOffsetPeriodo = offsetPeriodo + nGiorniPeriodo
 
   const date: string[] = []
   for (let i = 0; i < nGiorni; i++) date.push(aggiungiGiorni(inizioOrizzonte, i))
@@ -246,7 +255,7 @@ export function costruisciModello(d: DatiIngresso): Modello {
   }
   const nSettimane = ancore.size
 
-  // --- Slot da coprire (solo nel mese pianificato) -------------------------
+  // --- Slot da coprire (solo nell'intervallo pianificato) ------------------
   // Indicizzo la copertura per lookup O(1): festivo prima, poi giorno feriale.
   const copFestiva = new Map<string, RigaCopertura>()
   const copFeriale = new Map<string, RigaCopertura>()
@@ -257,7 +266,7 @@ export function costruisciModello(d: DatiIngresso): Modello {
   }
 
   const slots: Slot[] = []
-  for (let g = offsetPeriodo; g < nGiorni; g++) {
+  for (let g = offsetPeriodo; g < fineOffsetPeriodo; g++) {
     const dt = date[g]
     const dow = giornoSettimana(dt)
     const usaFestiva = festivi.get(dt) === true
@@ -309,7 +318,7 @@ export function costruisciModello(d: DatiIngresso): Modello {
     if (li === undefined || ti === undefined || pi === undefined) continue
     const g = differenzaGiorni(inizioOrizzonte, a.data)
     if (g < 0 || g >= nGiorni) continue
-    const nelPeriodo = g >= offsetPeriodo
+    const nelPeriodo = g >= offsetPeriodo && g < fineOffsetPeriodo
     // Nel periodo pianificato conta solo se l'utente l'ha bloccata a mano;
     // fuori dal periodo (coda del mese precedente) è sempre immutabile.
     if (nelPeriodo && !a.bloccato) continue
@@ -328,6 +337,7 @@ export function costruisciModello(d: DatiIngresso): Modello {
     finePeriodo,
     nGiorni,
     offsetPeriodo,
+    fineOffsetPeriodo,
     turni,
     postazioni,
     lavoratori,
@@ -351,7 +361,9 @@ export function costruisciModello(d: DatiIngresso): Modello {
 /** Giorni del mese pianificato che ricadono in ciascuna settimana. */
 export function giorniPeriodoPerSettimana(m: Modello): number[] {
   const conta = new Array(m.nSettimane).fill(0)
-  for (let g = m.offsetPeriodo; g < m.nGiorni; g++) conta[m.settimanaDi[g]]++
+  for (let g = m.offsetPeriodo; g < m.fineOffsetPeriodo; g++) {
+    conta[m.settimanaDi[g]]++
+  }
   return conta
 }
 

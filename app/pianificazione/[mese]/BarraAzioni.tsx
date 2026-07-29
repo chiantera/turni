@@ -15,10 +15,12 @@ interface Fattibilita {
 }
 
 export default function BarraAzioni({
-  mese,
+  dal,
+  al,
   esistente,
 }: {
-  mese: string
+  dal: string
+  al: string
   esistente: boolean
 }) {
   const router = useRouter()
@@ -33,7 +35,7 @@ export default function BarraAzioni({
     setErrore(null)
     setEsito(null)
     try {
-      const r = await fetch(`/api/piano/fattibilita?mese=${mese}`)
+      const r = await fetch(`/api/piano/fattibilita?dal=${dal}&al=${al}`)
       const d = await r.json()
       if (!r.ok) throw new Error(d.errore ?? "Verifica non riuscita.")
       setFattibilita(d)
@@ -52,7 +54,7 @@ export default function BarraAzioni({
       const r = await fetch("/api/piano/genera", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mese, seme, tempoMaxMs: 15_000 }),
+        body: JSON.stringify({ dal, al, seme, tempoMaxMs: 15_000 }),
       })
       const d = await r.json()
       if (!r.ok) throw new Error(d.errore ?? "Generazione non riuscita.")
@@ -110,7 +112,7 @@ export default function BarraAzioni({
         )}
 
         <a
-          href={`/api/export/xlsx?mese=${mese}`}
+          href={`/api/export/xlsx?dal=${dal}&al=${al}`}
           className={`bottone ml-auto ${esistente ? "" : "pointer-events-none opacity-50"}`}
         >
           Esporta in Excel
@@ -122,7 +124,7 @@ export default function BarraAzioni({
 
       {esistente && (
         <p className="text-xs text-tenue">
-          Rigenerare sostituisce l&apos;intero mese. Lo stesso numero di variante
+          Rigenerare sostituisce l&apos;intero intervallo selezionato. Lo stesso numero di variante
           produce sempre lo stesso piano: cambialo per confrontare distribuzioni
           diverse a parità di vincoli.
         </p>

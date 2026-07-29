@@ -1,7 +1,11 @@
 import { createEvents, type EventAttributes } from "ics"
 import { NextResponse } from "next/server"
 
-import { giorniNelMese, oraInMinuti, pezziData, primoDelMese } from "@/lib/solver/tempo"
+import {
+  ErroreIntervalloPianificazione,
+  intervalloDaParametri,
+} from "@/lib/dati/intervallo"
+import { oraInMinuti, pezziData } from "@/lib/solver/tempo"
 import { creaClientServer, utenteCorrente } from "@/lib/supabase/server"
 
 export const runtime = "nodejs"
@@ -21,9 +25,19 @@ export async function GET(req: Request) {
   }
 
   const url = new URL(req.url)
-  const meseGrezzo = url.searchParams.get("mese")
-  if (!meseGrezzo || !/^\d{4}-\d{2}-\d{2}$/.test(meseGrezzo)) {
-    return NextResponse.json({ errore: "Parametro 'mese' mancante." }, { status: 400 })
+  let intervallo
+  try {
+    intervallo = intervalloDaParametri({
+      mese: url.searchParams.get("mese") ?? url.searchParams.get("dal") ?? "",
+      dal: url.searchParams.get("dal") ?? undefined,
+      al: url.searchParams.get("al") ?? undefined,
+    })
+  } catch (errore) {
+    const messaggio =
+      errore instanceof ErroreIntervalloPianificazione
+        ? errore.message
+        : "Intervallo non valido."
+    return NextResponse.json({ errore: messaggio }, { status: 400 })
   }
 
   const pianificatore =
@@ -38,8 +52,7 @@ export async function GET(req: Request) {
     )
   }
 
-  const mese = primoDelMese(meseGrezzo)
-  const fine = `${mese.slice(0, 8)}${String(giorniNelMese(mese)).padStart(2, "0")}`
+  const { dal, al } = intervallo
 
   const sb = await creaClientServer()
   const [assegnazioni, turni, postazioni, lavoratore] = await Promise.all([
@@ -47,8 +60,8 @@ export async function GET(req: Request) {
       .from("assignments")
       .select("*")
       .eq("worker_id", workerId)
-      .gte("data", mese)
-      .lte("data", fine)
+      .gte("data", dal)
+      .lte("data", al)
       .order("data"),
     sb.from("shift_types").select("*"),
     sb.from("positions").select("*"),
@@ -81,7 +94,7 @@ export async function GET(req: Request) {
 
   if (eventi.length === 0) {
     return NextResponse.json(
-      { errore: "Nessun turno assegnato in questo mese." },
+      { errore: "Nessun turno assegnato in questo intervallo." },
       { status: 404 },
     )
   }
@@ -97,7 +110,7 @@ export async function GET(req: Request) {
   return new NextResponse(value, {
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": `attachment; filename="turni-${mese.slice(0, 7)}.ics"`,
+      "Content-Disposition": `attachment; filename="turni-${dal}-${al}.ics"`,
     },
   })
 }

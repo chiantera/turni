@@ -3,8 +3,10 @@ import { NextResponse } from "next/server"
 import {
   ErroreModifichePiano,
   preparaSalvataggioModifiche,
+  validaModificheIntervallo,
   validaModifichePiano,
 } from "@/lib/dati/modifiche-piano"
+import { primoDelMese } from "@/lib/solver/tempo"
 import { creaClientServer, ePianificatore } from "@/lib/supabase/server"
 
 export async function PUT(req: Request) {
@@ -22,26 +24,42 @@ export async function PUT(req: Request) {
   try {
     const r = corpo && typeof corpo === "object" ? (corpo as Record<string, unknown>) : {}
     const mese = typeof r.mese === "string" ? r.mese : ""
-    const modifiche = validaModifichePiano(mese, r.modifiche)
+    const dal = typeof r.dal === "string" ? r.dal : ""
+    const al = typeof r.al === "string" ? r.al : ""
+    const modifiche =
+      dal || al
+        ? validaModificheIntervallo(dal, al, r.modifiche)
+        : validaModifichePiano(mese, r.modifiche)
     if (modifiche.length === 0) {
       return NextResponse.json({ salvate: 0 })
     }
 
     const sb = await creaClientServer()
-    const piano = await sb.from("schedules").select("id").eq("mese", mese).maybeSingle()
-    if (piano.error) throw piano.error
-    if (!piano.data) {
-      return NextResponse.json({ errore: "Nessun piano per questo mese." }, { status: 404 })
+    const mesiModificati = [...new Set(modifiche.map((m) => primoDelMese(m.data)))]
+    const piani = await sb.from("schedules").select("id, mese").in("mese", mesiModificati)
+    if (piani.error) throw piani.error
+    const pianoPerMese = new Map((piani.data ?? []).map((p) => [p.mese, p.id]))
+
+    const workerIds = [...new Set(modifiche.map((m) => m.workerId))]
+    const lavoratori = await sb
+      .from("workers")
+      .select("id")
+      .in("id", workerIds)
+      .eq("attivo", true)
+    if (lavoratori.error) throw lavoratori.error
+    const lavoratoriValidi = new Set((lavoratori.data ?? []).map((x) => x.id))
+    if (modifiche.some((modifica) => !lavoratoriValidi.has(modifica.workerId))) {
+      return NextResponse.json(
+        { errore: "Una modifica usa un lavoratore non valido." },
+        { status: 400 },
+      )
     }
-    const scheduleId = piano.data.id
 
     const assegnate = modifiche.filter((m) => m.shiftTypeId && m.positionId)
     if (assegnate.length > 0) {
-      const workerIds = [...new Set(assegnate.map((m) => m.workerId))]
       const shiftIds = [...new Set(assegnate.map((m) => m.shiftTypeId as string))]
       const positionIds = [...new Set(assegnate.map((m) => m.positionId as string))]
-      const [lavoratori, turni, postazioni, abilitazioni] = await Promise.all([
-        sb.from("workers").select("id").in("id", workerIds).eq("attivo", true),
+      const [turni, postazioni, abilitazioni] = await Promise.all([
         sb.from("shift_types").select("id").in("id", shiftIds).eq("attivo", true),
         sb.from("positions").select("id").in("id", positionIds).eq("attiva", true),
         sb
@@ -50,11 +68,10 @@ export async function PUT(req: Request) {
           .in("worker_id", workerIds)
           .in("position_id", positionIds),
       ])
-      for (const esito of [lavoratori, turni, postazioni, abilitazioni]) {
+      for (const esito of [turni, postazioni, abilitazioni]) {
         if (esito.error) throw esito.error
       }
 
-      const lavoratoriValidi = new Set((lavoratori.data ?? []).map((x) => x.id))
       const turniValidi = new Set((turni.data ?? []).map((x) => x.id))
       const postazioniValide = new Set((postazioni.data ?? []).map((x) => x.id))
       const coppieValide = new Set(
@@ -75,35 +92,61 @@ export async function PUT(req: Request) {
       }
     }
 
-    const { daSalvare, daRimuovere } = preparaSalvataggioModifiche(
-      scheduleId,
-      modifiche,
-    )
-    if (daSalvare.length > 0) {
-      const salvate = await sb.from("assignments").upsert(daSalvare, {
-        onConflict: "schedule_id,data,worker_id",
-      })
-      if (salvate.error) throw salvate.error
+    for (const meseModificato of mesiModificati) {
+      if (pianoPerMese.has(meseModificato)) continue
+      const creato = await sb
+        .from("schedules")
+        .upsert(
+          {
+            mese: meseModificato,
+            seed: 1,
+            parametri: dal && al ? ({ dal, al } as never) : undefined,
+          },
+          { onConflict: "mese" },
+        )
+        .select("id, mese")
+        .single()
+      if (creato.error || !creato.data) {
+        throw creato.error ?? new Error("Impossibile creare il piano mensile.")
+      }
+      pianoPerMese.set(creato.data.mese, creato.data.id)
     }
 
-    const rimozioni = await Promise.all(
-      daRimuovere.map((m) =>
-        sb
-          .from("assignments")
-          .delete()
-          .eq("schedule_id", scheduleId)
-          .eq("worker_id", m.workerId)
-          .eq("data", m.data),
-      ),
-    )
-    const rimozioneFallita = rimozioni.find((x) => x.error)
-    if (rimozioneFallita?.error) throw rimozioneFallita.error
+    for (const meseModificato of mesiModificati) {
+      const scheduleId = pianoPerMese.get(meseModificato) as string
+      const modificheMese = modifiche.filter(
+        (modifica) => primoDelMese(modifica.data) === meseModificato,
+      )
+      const { daSalvare, daRimuovere } = preparaSalvataggioModifiche(
+        scheduleId,
+        modificheMese,
+      )
+      if (daSalvare.length > 0) {
+        const salvate = await sb.from("assignments").upsert(daSalvare, {
+          onConflict: "schedule_id,data,worker_id",
+        })
+        if (salvate.error) throw salvate.error
+      }
 
-    const aggiornato = await sb
-      .from("schedules")
-      .update({ aggiornato_il: new Date().toISOString() })
-      .eq("id", scheduleId)
-    if (aggiornato.error) throw aggiornato.error
+      const rimozioni = await Promise.all(
+        daRimuovere.map((m) =>
+          sb
+            .from("assignments")
+            .delete()
+            .eq("schedule_id", scheduleId)
+            .eq("worker_id", m.workerId)
+            .eq("data", m.data),
+        ),
+      )
+      const rimozioneFallita = rimozioni.find((x) => x.error)
+      if (rimozioneFallita?.error) throw rimozioneFallita.error
+
+      const aggiornato = await sb
+        .from("schedules")
+        .update({ aggiornato_il: new Date().toISOString() })
+        .eq("id", scheduleId)
+      if (aggiornato.error) throw aggiornato.error
+    }
 
     return NextResponse.json({
       salvate: modifiche.length,

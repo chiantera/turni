@@ -309,7 +309,8 @@ function mossaScambiaGiorno(
   r: Casuale,
   tocchi: number[],
 ): Ripristino {
-  const giorno = m.offsetPeriodo + intero(r, m.nGiorni - m.offsetPeriodo)
+  const giorno =
+    m.offsetPeriodo + intero(r, m.fineOffsetPeriodo - m.offsetPeriodo)
   const delGiorno: number[] = []
   for (let i = 0; i < m.slots.length; i++) {
     if (m.slots[i].giornoIdx === giorno && !s.bloccato[i]) delGiorno.push(i)

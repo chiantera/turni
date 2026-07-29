@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { generaPiano, type EsitoCompleto } from "./index"
-import { costruisciModello } from "./modello"
+import { costruisciModello, PESI_DEFAULT, REGOLE_DEFAULT } from "./modello"
 import { scenario } from "./scenari"
 import { verificaFattibilita } from "./fattibilita"
 import type { Vincolo } from "./tipi"
@@ -394,5 +394,100 @@ describe("più postazioni", () => {
     )
     expect(invarianti(esito)).toEqual([])
     expect(esito.slotScoperti).toBe(0)
+  })
+})
+
+describe("orizzonte di pianificazione personalizzato", () => {
+  it("costruisce un intervallo inclusivo che attraversa il cambio d'anno", () => {
+    const modello = costruisciModello({
+      ...scenario({ mese: "2026-12-01" }),
+      dal: "2026-12-20",
+      al: "2027-01-10",
+    })
+
+    expect(modello.inizioPeriodo).toBe("2026-12-20")
+    expect(modello.finePeriodo).toBe("2027-01-10")
+    expect(new Set(modello.slots.map((slot) => slot.data)).size).toBe(22)
+    expect(modello.slots.every((slot) => slot.data >= "2026-12-20")).toBe(true)
+    expect(modello.slots.every((slot) => slot.data <= "2027-01-10")).toBe(true)
+  })
+
+  it("rispetta il riposo verso un turno preservato dopo la data finale", () => {
+    const esito = generaPiano(
+      {
+        mese: "2026-08-01",
+        dal: "2026-08-31",
+        al: "2026-08-31",
+        giorniContesto: 0,
+        giorniContestoDopo: 1,
+        turni: [
+          {
+            id: "notte",
+            codice: "N",
+            nome: "Notte",
+            ora_inizio: "21:00",
+            durata_min: 480,
+            scavalca_mezzanotte: true,
+            is_notte: true,
+            ordine_rotazione: 0,
+            conta_nelle_ore: true,
+            peso_ore: 1,
+          },
+          {
+            id: "mattino",
+            codice: "M",
+            nome: "Mattino",
+            ora_inizio: "06:00",
+            durata_min: 480,
+            scavalca_mezzanotte: false,
+            is_notte: false,
+            ordine_rotazione: 1,
+            conta_nelle_ore: true,
+            peso_ore: 1,
+          },
+        ],
+        postazioni: [{ id: "p", nome: "Postazione" }],
+        lavoratori: [
+          {
+            id: "l",
+            nome: "Lina",
+            cognome: "Test",
+            ore_settimanali: 40,
+            riposo_min_dopo_notte_h: 11,
+            max_giorni_consecutivi: 6,
+          },
+        ],
+        abilitazioni: [{ worker_id: "l", position_id: "p" }],
+        copertura: [
+          {
+            position_id: "p",
+            shift_type_id: "notte",
+            giorno_settimana: 1,
+            tipo_giorno: "feriale",
+            n_richiesti: 1,
+            valido_dal: null,
+            valido_al: null,
+          },
+        ],
+        festivita: [],
+        assenze: [],
+        vincoli: [],
+        assegnazioniEsistenti: [
+          {
+            data: "2026-09-01",
+            worker_id: "l",
+            shift_type_id: "mattino",
+            position_id: "p",
+            bloccato: false,
+          },
+        ],
+        pesi: PESI_DEFAULT,
+        regole: REGOLE_DEFAULT,
+      },
+      { seme: 1, tempoMaxMs: 20 },
+    )
+
+    expect(esito.modello.date).toEqual(["2026-08-31", "2026-09-01"])
+    expect(esito.slotScoperti).toBe(1)
   })
 })

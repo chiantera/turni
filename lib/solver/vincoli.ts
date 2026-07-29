@@ -363,7 +363,7 @@ function giorniConsecutiviOk(m: Modello, s: Stato, lav: number, g: number): bool
 function contaTurni(m: Modello, s: Stato, lav: number, turno: number): number {
   let n = 0
   const base = lav * m.nGiorni
-  for (let g = m.offsetPeriodo; g < m.nGiorni; g++) {
+  for (let g = m.offsetPeriodo; g < m.fineOffsetPeriodo; g++) {
     if (s.turnoDelGiorno[base + g] === turno) n++
   }
   return n
@@ -407,7 +407,7 @@ export function costoLavoratore(
   const giorniPeriodoSett = new Int32Array(m.nSettimane)
   let nottiTot = 0
 
-  for (let g = m.offsetPeriodo; g < nG; g++) {
+  for (let g = m.offsetPeriodo; g < m.fineOffsetPeriodo; g++) {
     giorniPeriodoSett[m.settimanaDi[g]]++
     const t = s.turnoDelGiorno[base + g]
     if (t === -1) continue
@@ -432,7 +432,7 @@ export function costoLavoratore(
     if (gg === 7) {
       const nottiTarget = oreSett / 38
       let nottiSett = 0
-      for (let g = m.offsetPeriodo; g < nG; g++) {
+      for (let g = m.offsetPeriodo; g < m.fineOffsetPeriodo; g++) {
         if (m.settimanaDi[g] !== w) continue
         const t = s.turnoDelGiorno[base + g]
         if (t !== -1 && m.turni[t].isNotte) nottiSett++
@@ -508,7 +508,7 @@ export function costoEquita(m: Modello, s: Stato): number {
   const minuti = new Float64Array(nL)
 
   for (let l = 0; l < nL; l++) {
-    for (let g = m.offsetPeriodo; g < nG; g++) {
+    for (let g = m.offsetPeriodo; g < m.fineOffsetPeriodo; g++) {
       const t = s.turnoDelGiorno[l * nG + g]
       if (t === -1) continue
       const tt = m.turni[t]
@@ -674,7 +674,7 @@ export function trovaViolazioni(
 export function riepiloghi(m: Modello, s: Stato, c: VincoliCompilati) {
   const nG = m.nGiorni
   const out = []
-  const giorniPeriodo = nG - m.offsetPeriodo
+  const giorniPeriodo = m.fineOffsetPeriodo - m.offsetPeriodo
 
   for (let l = 0; l < m.lavoratori.length; l++) {
     const L = m.lavoratori[l]
@@ -687,7 +687,7 @@ export function riepiloghi(m: Modello, s: Stato, c: VincoliCompilati) {
     let festiviLavorati = 0
     let giorniLavorati = 0
 
-    for (let g = m.offsetPeriodo; g < nG; g++) {
+    for (let g = m.offsetPeriodo; g < m.fineOffsetPeriodo; g++) {
       const t = s.turnoDelGiorno[base + g]
       if (t === -1) continue
       const tt = m.turni[t]

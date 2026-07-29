@@ -74,7 +74,7 @@ export function verificaFattibilita(m: Modello): Fattibilita {
     const L = m.lavoratori[l]
     const oreNominali = (L.oreSettimanali * giorniPeriodo) / 7
     let giorniAssenti = 0
-    for (let g = m.offsetPeriodo; g < m.nGiorni; g++) {
+    for (let g = m.offsetPeriodo; g < m.fineOffsetPeriodo; g++) {
       if (m.assente[l * m.nGiorni + g]) giorniAssenti++
     }
     // Un giorno di assenza sottrae la quota giornaliera del monte ore.

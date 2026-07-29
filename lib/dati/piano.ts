@@ -1,6 +1,11 @@
 import "server-only"
 
-import { aggiungiGiorni, giorniNelMese, primoDelMese } from "@/lib/solver/tempo"
+import {
+  fineDelMese,
+  limitiMensiliIntervallo,
+  validaIntervallo,
+} from "@/lib/dati/intervallo"
+import { aggiungiGiorni, primoDelMese } from "@/lib/solver/tempo"
 import {
   PESI_DEFAULT,
   REGOLE_DEFAULT,
@@ -10,17 +15,19 @@ import type { Pesi, Regole, Vincolo, Violazione } from "@/lib/solver/tipi"
 import { creaClientServer } from "@/lib/supabase/server"
 
 /**
- * Carica tutto ciò che serve al solver per un mese.
+ * Carica tutto ciò che serve al solver per un intervallo inclusivo.
  *
- * Include i 7 giorni precedenti al mese: senza quelli i riposi e la rotazione
- * si rompono al cambio mese, che è esattamente il punto in cui i piani fatti a
+ * Include i 7 giorni precedenti: senza quelli i riposi e la rotazione
+ * si rompono al cambio di intervallo, che è esattamente il punto in cui i piani fatti a
  * mano sbagliano più spesso.
  */
-export async function caricaDatiSolver(mese: string): Promise<DatiIngresso> {
+export async function caricaDatiSolver(dal: string, al?: string): Promise<DatiIngresso> {
   const sb = await creaClientServer()
-  const inizio = primoDelMese(mese)
-  const fine = aggiungiGiorni(inizio, giorniNelMese(mese) - 1)
+  const intervallo = al ? validaIntervallo(dal, al) : null
+  const inizio = intervallo?.dal ?? primoDelMese(dal)
+  const fine = intervallo?.al ?? fineDelMese(inizio)
   const inizioContesto = aggiungiGiorni(inizio, -7)
+  const fineContesto = aggiungiGiorni(fine, 7)
 
   const [
     turni,
@@ -39,15 +46,19 @@ export async function caricaDatiSolver(mese: string): Promise<DatiIngresso> {
     sb.from("workers").select("*").eq("attivo", true).order("cognome"),
     sb.from("worker_positions").select("worker_id, position_id"),
     sb.from("coverage_rules").select("*"),
-    sb.from("holidays").select("data, usa_copertura_festiva").gte("data", inizioContesto).lte("data", fine),
-    sb.from("absences").select("*").lte("dal", fine).gte("al", inizioContesto),
+    sb
+      .from("holidays")
+      .select("data, usa_copertura_festiva")
+      .gte("data", inizioContesto)
+      .lte("data", fineContesto),
+    sb.from("absences").select("*").lte("dal", fineContesto).gte("al", inizioContesto),
     sb.from("constraints").select("*").eq("attivo", true),
     sb.from("settings").select("*"),
     sb
       .from("assignments")
       .select("data, worker_id, shift_type_id, position_id, bloccato")
       .gte("data", inizioContesto)
-      .lte("data", fine),
+      .lte("data", fineContesto),
   ])
 
   const imp = new Map((impostazioni.data ?? []).map((r) => [r.chiave, r.valore]))
@@ -77,6 +88,8 @@ export async function caricaDatiSolver(mese: string): Promise<DatiIngresso> {
 
   return {
     mese: inizio,
+    dal: inizio,
+    al: fine,
     turni: (turni.data ?? []).map((t) => ({
       id: t.id,
       codice: t.codice,
@@ -121,6 +134,7 @@ export async function caricaDatiSolver(mese: string): Promise<DatiIngresso> {
     pesi,
     regole,
     giorniContesto: 7,
+    giorniContestoDopo: 7,
   }
 }
 
@@ -142,60 +156,157 @@ export async function salvaPiano(
   punteggio: Record<string, unknown>,
   seme: number,
 ) {
-  const sb = await creaClientServer()
   const inizio = primoDelMese(mese)
-
-  const { data: piano, error: erroreUpsert } = await sb
-    .from("schedules")
-    .upsert(
-      {
-        mese: inizio,
-        seed: seme,
-        punteggio: punteggio as never,
-        aggiornato_il: new Date().toISOString(),
-      },
-      { onConflict: "mese" },
-    )
-    .select()
-    .single()
-
-  if (erroreUpsert || !piano) {
-    throw new Error(erroreUpsert?.message ?? "Impossibile salvare il piano.")
-  }
-
-  // Sostituzione integrale: il solver produce sempre il mese completo.
-  await sb.from("assignments").delete().eq("schedule_id", piano.id)
-  await sb.from("violations").delete().eq("schedule_id", piano.id)
-
-  if (assegnazioni.length > 0) {
-    const { error } = await sb.from("assignments").insert(
-      assegnazioni.map((a) => ({
-        schedule_id: piano.id,
-        data: a.data,
-        worker_id: a.worker_id,
-        shift_type_id: a.shift_type_id,
-        position_id: a.position_id,
-        bloccato: a.bloccato,
-        origine: a.bloccato ? ("manuale" as const) : ("solver" as const),
-      })),
-    )
-    if (error) throw new Error(error.message)
-  }
-
-  if (violazioni.length > 0) {
-    await sb.from("violations").insert(
-      violazioni.slice(0, 500).map((v) => ({
-        schedule_id: piano.id,
-        tipo: v.tipo,
-        gravita: v.gravita,
-        messaggio: v.messaggio,
-        data: v.data ?? null,
-        riferimenti: (v.riferimenti ?? {}) as never,
-      })),
-    )
-  }
-
+  const [piano] = await salvaIntervalloPiani(
+    inizio,
+    fineDelMese(inizio),
+    assegnazioni,
+    violazioni,
+    punteggio,
+    seme,
+  )
   return piano
+}
+
+export async function salvaIntervalloPiani(
+  dal: string,
+  al: string,
+  assegnazioni: {
+    data: string
+    worker_id: string
+    shift_type_id: string
+    position_id: string
+    bloccato: boolean
+  }[],
+  violazioni: Violazione[],
+  punteggio: Record<string, unknown>,
+  seme: number,
+) {
+  validaIntervallo(dal, al)
+  const sb = await creaClientServer()
+  const piani = []
+  const segmenti = limitiMensiliIntervallo(dal, al)
+
+  for (const [indice, segmento] of segmenti.entries()) {
+    const { data: piano, error: erroreUpsert } = await sb
+      .from("schedules")
+      .upsert(
+        {
+          mese: segmento.mese,
+          seed: seme,
+          parametri: { dal, al } as never,
+          punteggio: punteggio as never,
+          aggiornato_il: new Date().toISOString(),
+        },
+        { onConflict: "mese" },
+      )
+      .select()
+      .single()
+
+    if (erroreUpsert || !piano) {
+      throw new Error(erroreUpsert?.message ?? "Impossibile salvare il piano.")
+    }
+
+    const precedenti = await sb
+      .from("assignments")
+      .select("id, data, worker_id")
+      .eq("schedule_id", piano.id)
+      .gte("data", segmento.dal)
+      .lte("data", segmento.al)
+    if (precedenti.error) throw new Error(precedenti.error.message)
+
+    const segmentoIntero =
+      segmento.dal === segmento.mese && segmento.al === fineDelMese(segmento.mese)
+    const violazioniPrecedenti = segmentoIntero
+      ? await sb.from("violations").select("id").eq("schedule_id", piano.id)
+      : await sb
+          .from("violations")
+          .select("id")
+          .eq("schedule_id", piano.id)
+          .gte("data", segmento.dal)
+          .lte("data", segmento.al)
+    if (violazioniPrecedenti.error) throw new Error(violazioniPrecedenti.error.message)
+    const idsViolazioniPrecedenti = (violazioniPrecedenti.data ?? []).map((v) => v.id)
+    if (!segmentoIntero && indice === 0) {
+      const globaliPrecedenti = await sb
+        .from("violations")
+        .select("id")
+        .eq("schedule_id", piano.id)
+        .is("data", null)
+        .contains("riferimenti", { intervallo: { dal, al } } as never)
+      if (globaliPrecedenti.error) throw new Error(globaliPrecedenti.error.message)
+      idsViolazioniPrecedenti.push(
+        ...(globaliPrecedenti.data ?? []).map((violazione) => violazione.id),
+      )
+    }
+
+    const assegnazioniMese = assegnazioni.filter(
+      (a) => a.data >= segmento.dal && a.data <= segmento.al,
+    )
+    if (assegnazioniMese.length > 0) {
+      const { error } = await sb.from("assignments").upsert(
+        assegnazioniMese.map((a) => ({
+          schedule_id: piano.id,
+          data: a.data,
+          worker_id: a.worker_id,
+          shift_type_id: a.shift_type_id,
+          position_id: a.position_id,
+          bloccato: a.bloccato,
+          origine: a.bloccato ? ("manuale" as const) : ("solver" as const),
+        })),
+        { onConflict: "schedule_id,data,worker_id" },
+      )
+      if (error) throw new Error(error.message)
+    }
+
+    const chiaviNuove = new Set(
+      assegnazioniMese.map((a) => `${a.data}:${a.worker_id}`),
+    )
+    const idsObsoleti = (precedenti.data ?? [])
+      .filter((a) => !chiaviNuove.has(`${a.data}:${a.worker_id}`))
+      .map((a) => a.id)
+    for (let i = 0; i < idsObsoleti.length; i += 200) {
+      const cancellate = await sb
+        .from("assignments")
+        .delete()
+        .in("id", idsObsoleti.slice(i, i + 200))
+      if (cancellate.error) throw new Error(cancellate.error.message)
+    }
+
+    const violazioniMese = violazioni.filter(
+      (v) =>
+        (v.data && v.data >= segmento.dal && v.data <= segmento.al) ||
+        (!v.data && indice === 0),
+    )
+    if (violazioniMese.length > 0) {
+      const inserite = await sb.from("violations").insert(
+        violazioniMese.slice(0, 500).map((v) => ({
+          schedule_id: piano.id,
+          tipo: v.tipo,
+          gravita: v.gravita,
+          messaggio: v.messaggio,
+          data: v.data ?? null,
+          riferimenti: {
+            ...(v.riferimenti ?? {}),
+            intervallo: { dal, al },
+          } as never,
+        })),
+      )
+      if (inserite.error) throw new Error(inserite.error.message)
+    }
+
+    for (let i = 0; i < idsViolazioniPrecedenti.length; i += 200) {
+      const cancellate = await sb
+        .from("violations")
+        .delete()
+        .in("id", idsViolazioniPrecedenti.slice(i, i + 200))
+      if (cancellate.error) throw new Error(cancellate.error.message)
+    }
+
+    piani.push(piano)
+  }
+
+  return piani
 }
 
 /** Contesto per l'estrazione AI: nomi che il modello può citare. */

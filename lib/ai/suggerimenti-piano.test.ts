@@ -7,7 +7,8 @@ import {
 } from "./suggerimenti-piano"
 
 const contesto: ContestoSuggerimentiPiano = {
-  mese: "2026-08-01",
+  dal: "2026-08-20",
+  al: "2026-09-10",
   segnalazioni: [
     {
       gravita: "bloccante",
@@ -44,6 +45,8 @@ describe("suggerimenti AI per un piano con segnalazioni", () => {
     expect(prompt).toContain("Manca un lavoratore per Reparto A")
     expect(prompt).toContain("Marco Rossi")
     expect(prompt).toContain("Marco Rossi non fa notti")
+    expect(prompt).toContain('"dal": "2026-08-20"')
+    expect(prompt).toContain('"al": "2026-09-10"')
     expect(prompt).toContain("NON modificare dati")
     expect(prompt).toContain("non garantire che una proposta risolva il piano")
   })

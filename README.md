@@ -46,6 +46,19 @@ il piano.
 Un modello linguistico che producesse direttamente la griglia non potrebbe
 garantire copertura, monte ore o riposi, e non sarebbe riproducibile.
 
+### Pianificazione per intervallo
+
+La schermata **Pianifica** usa un intervallo di date inclusivo. Il pianificatore
+può aprire il mese corrente, visualizzare due mesi completi insieme oppure
+impostare qualsiasi data iniziale e finale fino a 366 giorni. Griglia, conteggi,
+fattibilità, solver, segnalazioni AI ed esportazione Excel lavorano sullo stesso
+intervallo, anche quando attraversa un cambio di mese o di anno.
+
+I piani restano archiviati in record mensili compatibili con i dati esistenti,
+ma l'interfaccia li combina in un'unica bozza. Generare un intervallo aggiorna
+solo le date selezionate nei mesi coinvolti e conserva le assegnazioni esterne
+all'intervallo nei mesi iniziale e finale.
+
 ### Modifica manuale e salvataggio del piano
 
 Dopo **Genera il piano**, entrambe le proiezioni della griglia restano
@@ -70,8 +83,8 @@ viene ricostruita con i nuovi valori alla visita successiva.
   **Annulla** ripristina l'ultimo stato salvato.
 
 Le assegnazioni manuali vengono memorizzate con origine `manuale` e marcate
-come bloccate. Una nuova generazione del piano sostituisce comunque l'intero
-mese, comportamento indicato anche nell'interfaccia.
+come bloccate. Una nuova generazione sostituisce le assegnazioni dell'intervallo
+selezionato, comportamento indicato anche nell'interfaccia.
 
 Se il solver lascia delle **segnalazioni**, la pagina di pianificazione espone
 un'analisi AI su richiesta. L'assistente confronta le segnalazioni con
@@ -220,7 +233,7 @@ npm run typecheck
 
 ```
 app/
-  pianificazione/[mese]/   schermata principale: griglia, generazione, segnalazioni
+  pianificazione/[mese]/   griglia e intervallo inclusivo via query dal/al
   vincoli/                 elenco vincoli + assistente in linguaggio naturale
   lavoratori|postazioni|turni|copertura|impostazioni/
   api/piano/genera         invoca il solver e salva il piano
@@ -295,6 +308,19 @@ confirm. A scheduling solver then builds the plan.
 Having a language model produce the grid directly would not guarantee coverage,
 contract hours, or legal rest periods, and its result would not be reproducible.
 
+### Date-range planning
+
+The **Planning** screen uses an inclusive date range. A planner can open the
+current month, view two complete months together, or choose any start and end
+date up to 366 days. The grid, totals, feasibility checks, solver, AI
+diagnostics, and Excel export all use that same range, including month and year
+boundaries.
+
+Schedules remain stored in backward-compatible monthly records, while the UI
+combines them into one draft. Generating a range replaces only its selected
+dates in each affected month and preserves assignments outside the range in the
+first and last months.
+
 ### Manual schedule editing and persistence
 
 After **Generate schedule**, both grid projections remain interactive while
@@ -319,8 +345,8 @@ rebuilt with the updated values on the next visit.
   restores the last saved state.
 
 Manual assignments are stored with `manuale` origin and marked as locked.
-Generating the month again still replaces the complete schedule, and the UI
-states this explicitly.
+Generating again replaces assignments in the selected range, and the UI states
+this explicitly.
 
 When the solver leaves **diagnostics**, the planning page offers an on-demand
 AI analysis. The assistant compares diagnostics with coverage, staffing,

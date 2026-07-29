@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 
-import { caricaDatiSolver, salvaPiano } from "@/lib/dati/piano"
+import {
+  ErroreIntervalloPianificazione,
+  intervalloDaParametri,
+} from "@/lib/dati/intervallo"
+import { caricaDatiSolver, salvaIntervalloPiani } from "@/lib/dati/piano"
 import { estraiAssegnazioni, generaPiano } from "@/lib/solver"
 import { ePianificatore } from "@/lib/supabase/server"
 
@@ -14,19 +18,31 @@ export async function POST(req: Request) {
   }
 
   const corpo = await req.json().catch(() => ({}))
-  const mese: string = corpo.mese
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(mese ?? "")) {
-    return NextResponse.json(
-      { errore: "Mese mancante o non valido (atteso AAAA-MM-GG)." },
-      { status: 400 },
-    )
+  let intervallo
+  try {
+    intervallo = intervalloDaParametri({
+      mese:
+        typeof corpo.mese === "string"
+          ? corpo.mese
+          : typeof corpo.dal === "string"
+            ? corpo.dal
+            : "",
+      dal: typeof corpo.dal === "string" ? corpo.dal : undefined,
+      al: typeof corpo.al === "string" ? corpo.al : undefined,
+    })
+  } catch (errore) {
+    const messaggio =
+      errore instanceof ErroreIntervalloPianificazione
+        ? errore.message
+        : "Intervallo di pianificazione non valido."
+    return NextResponse.json({ errore: messaggio }, { status: 400 })
   }
 
   const seme: number = Number.isFinite(corpo.seme) ? corpo.seme : 1
   const tempoMaxMs = Math.min(Number(corpo.tempoMaxMs) || 10_000, 45_000)
 
   try {
-    const dati = await caricaDatiSolver(mese)
+    const dati = await caricaDatiSolver(intervallo.dal, intervallo.al)
 
     if (dati.lavoratori.length === 0) {
       return NextResponse.json(
@@ -44,8 +60,9 @@ export async function POST(req: Request) {
     const esito = generaPiano(dati, { seme, tempoMaxMs })
     const assegnazioni = estraiAssegnazioni(esito.modello, esito.stato)
 
-    await salvaPiano(
-      mese,
+    await salvaIntervalloPiani(
+      intervallo.dal,
+      intervallo.al,
       assegnazioni,
       esito.violazioni,
       {
