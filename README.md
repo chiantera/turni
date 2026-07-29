@@ -141,6 +141,27 @@ identificata come funzionalità **Premium** ad alto consumo; resta attiva durant
 lo sviluppo. I suggerimenti non modificano automaticamente alcun dato: vanno
 valutati dal pianificatore e verificati con una nuova esecuzione del solver.
 
+#### Suggerimenti AI per singola segnalazione
+
+- **`Chiedi un suggerimento all’AI`** invia l'identificativo della sola
+  segnalazione selezionata; **`Rigenera suggerimento`** ripete quella stessa
+  analisi senza coinvolgere gli altri avvisi.
+- Il server accetta soltanto identificativi UUID appartenenti a un piano e
+  all'intervallo richiesto. Valori nulli, malformati, estranei o fuori intervallo
+  restituiscono un errore e non possono ripiegare sull'analisi completa più
+  costosa.
+- Per problemi di copertura, il contesto conserva la postazione e il turno
+  citati, i lavoratori abilitati e i loro vincoli pertinenti. Per segnalazioni
+  personali conserva il lavoratore citato e i relativi vincoli. Il prompt indica
+  esplicitamente che deve analizzare una **singola segnalazione**.
+- **`Analizza tutte con l’AI`** continua a inviare il contesto complessivo ed è
+  contrassegnato `Premium · attiva per ora`: l'accesso resta aperto durante lo
+  sviluppo, ma il consumo elevato è una scelta di prodotto distinta.
+- Le risposte pubbliche contengono soltanto diagnosi, azioni, percorsi e limiti.
+  Provider, modello, token e latenza vengono registrati internamente in
+  `ai_interactions`; anche gli errori restituiti al browser sono neutralizzati e
+  non rivelano dettagli del provider o dell'infrastruttura.
+
 ### Il solver — `lib/solver/`
 
 Tre fasi, dalla più strutturata alla più opportunistica:
@@ -458,6 +479,26 @@ and cost. Joint analysis of every diagnostic is marked as a high-consumption
 **Premium** feature and remains enabled during development. Suggestions never
 modify data automatically: a planner must evaluate them and verify the result
 by running the solver again.
+
+#### AI suggestions for individual diagnostics
+
+- **`Chiedi un suggerimento all’AI`** sends only the selected diagnostic ID;
+  **`Rigenera suggerimento`** repeats that same analysis without including other
+  warnings.
+- The server accepts only UUIDs that belong to a schedule in the requested
+  interval. Null, malformed, foreign, or out-of-range IDs return an error and
+  cannot fall back to the more expensive whole-plan analysis.
+- For coverage problems, context retains the referenced position and shift,
+  qualified workers, and their relevant constraints. Worker diagnostics retain
+  the referenced worker and related constraints. The prompt explicitly limits
+  the model to a **single diagnostic**.
+- **`Analizza tutte con l’AI`** continues to send whole-plan context and is
+  labelled `Premium · attiva per ora`: it remains available during development,
+  while its higher consumption is treated as a separate product capability.
+- Public responses contain only the diagnosis, actions, application paths, and
+  limitations. Provider, model, token, and latency metadata is retained
+  internally in `ai_interactions`; browser-facing errors are also sanitized so
+  they do not disclose provider or infrastructure details.
 
 ### Solver — `lib/solver/`
 
