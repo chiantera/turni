@@ -320,13 +320,73 @@ describe("nessun vincolo accettato viene ignorato in silenzio", () => {
         tempoMaxMs: 0,
       })
 
+      // Tre esiti leciti, e nessun altro: applicato, segnalato come non
+      // applicabile, oppure dichiarato non pertinente a questo periodo.
       const applicato = esito.vincoliApplicati.includes(v.id)
       const segnalato = esito.violazioni.some(
         (x) => x.tipo === "vincolo_non_supportato" && x.riferimenti?.vincoloId === v.id,
       )
-      expect(applicato || segnalato).toBe(true)
+      const fuoriPeriodo = esito.vincoliFuoriPeriodo.some((x) => x.id === v.id)
+      expect(applicato || segnalato || fuoriPeriodo).toBe(true)
     },
   )
+})
+
+describe("vincoli fuori dal periodo pianificato", () => {
+  /** Vincolo interamente successivo all'intervallo che si sta pianificando. */
+  const agosto: Vincolo = {
+    id: "v-agosto",
+    kind: "indisponibile",
+    isHard: true,
+    peso: 100,
+    descrizione: "Chiara Colombo non lavora dal 10 al 20 agosto",
+    validoDal: "2026-08-10",
+    validoAl: "2026-08-20",
+    params: { lavoratore: "l-0", date: [] },
+  }
+
+  it("non produce alcuna segnalazione se si pianifica un altro mese", () => {
+    // Un vincolo di agosto mentre si pianifica luglio non è un errore: è
+    // semplicemente non pertinente. Trattarlo come un problema da risolvere
+    // riempie il pannello di allarmi falsi e fa perdere di vista quelli veri.
+    const esito = generaPiano(
+      scenario({ mese: "2026-07-01", nLavoratori: 9, vincoli: [agosto] }),
+      { seme: 1, tempoMaxMs: 0 },
+    )
+
+    const segnalato = esito.violazioni.filter(
+      (v) => v.riferimenti?.vincoloId === "v-agosto",
+    )
+    expect(segnalato).toEqual([])
+    expect(esito.vincoliNonApplicati.map((v) => v.id)).not.toContain("v-agosto")
+  })
+
+  it("lo dichiara fuori periodo, senza confonderlo con uno non applicabile", () => {
+    // Resta comunque tracciato: chi guarda l'elenco dei vincoli deve poter
+    // capire perché quella regola non ha avuto effetto.
+    const esito = generaPiano(
+      scenario({ mese: "2026-07-01", nLavoratori: 9, vincoli: [agosto] }),
+      { seme: 1, tempoMaxMs: 0 },
+    )
+    expect(esito.vincoliFuoriPeriodo.map((v) => v.id)).toContain("v-agosto")
+    expect(esito.vincoliApplicati).not.toContain("v-agosto")
+  })
+
+  it("lo applica quando si pianifica il mese giusto", () => {
+    const esito = generaPiano(
+      scenario({ mese: "2026-08-01", nLavoratori: 9, vincoli: [agosto] }),
+      { seme: 1, tempoMaxMs: 0 },
+    )
+    expect(esito.vincoliApplicati).toContain("v-agosto")
+    expect(esito.vincoliFuoriPeriodo).toEqual([])
+
+    const { modello: m, stato: s } = esito
+    for (let g = m.offsetPeriodo; g < m.fineOffsetPeriodo; g++) {
+      if (m.date[g] >= "2026-08-10" && m.date[g] <= "2026-08-20") {
+        expect(s.turnoDelGiorno[0 * m.nGiorni + g]).toBe(-1)
+      }
+    }
+  })
 })
 
 describe("ambito temporale dei vincoli sul numero di turni", () => {

@@ -46,6 +46,8 @@ export interface EsitoCompleto extends Risultato {
     descrizione: string
     motivo: string
   }[]
+  /** Vincoli validi che però non riguardano l'intervallo pianificato. */
+  vincoliFuoriPeriodo: { id: string; kind: string; descrizione: string }[]
 }
 
 /** Genera un piano turni a partire dai dati grezzi. */
@@ -137,6 +139,7 @@ function componiRisultato(
     fattibilita: extra.fattibilita,
     vincoliApplicati: [...c.applicati],
     vincoliNonApplicati: c.nonApplicati,
+    vincoliFuoriPeriodo: c.fuoriPeriodo,
   }
 }
 

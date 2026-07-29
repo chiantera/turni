@@ -59,6 +59,16 @@ export interface VincoliCompilati {
    * piano la viola, ed è la forma di errore più difficile da scoprire.
    */
   nonApplicati: { id: string; kind: string; descrizione: string; motivo: string }[]
+  /**
+   * Vincoli validi ma che non riguardano l'intervallo pianificato — per
+   * esempio una regola di agosto mentre si pianifica luglio.
+   *
+   * Sono tenuti separati da `nonApplicati` di proposito: non c'è niente da
+   * risolvere. Confonderli con un problema riempirebbe il pannello di allarmi
+   * falsi, e un pannello pieno di allarmi falsi è un pannello che si smette
+   * di leggere.
+   */
+  fuoriPeriodo: { id: string; kind: string; descrizione: string }[]
 }
 
 /**
@@ -124,6 +134,7 @@ export function compilaVincoli(m: Modello): VincoliCompilati {
     oreOverride: new Map(),
     applicati: new Set(),
     nonApplicati: [],
+    fuoriPeriodo: [],
   }
 
   const idxLav = new Map(m.lavoratori.map((l, i) => [l.id, i]))
@@ -146,6 +157,9 @@ export function compilaVincoli(m: Modello): VincoliCompilati {
     const lav = p.lavoratore ? idxLav.get(p.lavoratore) : undefined
 
     const applica = () => c.applicati.add(v.id)
+    /** Valido, ma non riguarda questo intervallo: nulla da segnalare. */
+    const fuori = () =>
+      c.fuoriPeriodo.push({ id: v.id, kind: v.kind, descrizione: v.descrizione })
     const scarta = (motivo: string) =>
       c.nonApplicati.push({
         id: v.id,
@@ -181,7 +195,7 @@ export function compilaVincoli(m: Modello): VincoliCompilati {
           break
         }
         if (giorniValidi.length === 0) {
-          scarta("il periodo di validità non tocca l'intervallo pianificato")
+          fuori()
           break
         }
         for (const g of giorniValidi) {
@@ -206,7 +220,7 @@ export function compilaVincoli(m: Modello): VincoliCompilati {
           break
         }
         if (giorniValidi.length === 0) {
-          scarta("il periodo di validità non tocca l'intervallo pianificato")
+          fuori()
           break
         }
         for (const g of giorniValidi) {
@@ -265,7 +279,7 @@ export function compilaVincoli(m: Modello): VincoliCompilati {
           break
         }
         if (giorniValidi.length === 0) {
-          scarta("il periodo di validità non tocca l'intervallo pianificato")
+          fuori()
           break
         }
         const giorniMask = new Uint8Array(nG)
