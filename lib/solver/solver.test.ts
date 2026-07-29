@@ -801,15 +801,22 @@ describe("orizzonte di pianificazione personalizzato", () => {
   it("considera il contesto e segnala un fisso già oltre il tetto settimanale", () => {
     const dati = scenario({ nLavoratori: 1 })
     dati.regole = { ...dati.regole, maxOreSettimana: 14 }
-    dati.assegnazioniEsistenti = ["2026-07-27", "2026-07-28", "2026-07-29"].map(
-      (data) => ({
+    dati.assegnazioniEsistenti = [
+      ...["2026-07-27", "2026-07-28", "2026-07-29"].map((data) => ({
         data,
         worker_id: "l-0",
         shift_type_id: "t-m",
         position_id: "p-0",
         bloccato: false,
-      }),
-    )
+      })),
+      {
+        data: "2026-08-01",
+        worker_id: "l-0",
+        shift_type_id: "t-m",
+        position_id: "p-0",
+        bloccato: true,
+      },
+    ]
 
     const esito = generaPiano(dati, { seme: 1, tempoMaxMs: 0 })
     const riepilogo = esito.riepiloghi[0]
@@ -821,6 +828,10 @@ describe("orizzonte di pianificazione personalizzato", () => {
       lavoratoreIdx: 0,
       riferimenti: { includeContesto: true, soglia: 14 },
     })
+    expect(
+      esito.violazioni.filter((v) => v.tipo === "max_ore_settimana"),
+    ).toHaveLength(1)
+    expect(violazione!.messaggio).toContain("settimana che inizia il 2026-07-27")
   })
 
   it("scala le preferenze con il peso globale configurato", () => {

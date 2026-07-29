@@ -717,7 +717,15 @@ export function oreSettimana(
   lav: number,
   settimana: number,
 ): number {
-  return orePerSettimana(m, s, lav)[settimana] ?? 0
+  let minuti = 0
+  const base = lav * m.nGiorni
+  for (let g = 0; g < m.nGiorni; g++) {
+    if (m.settimanaDi[g] !== settimana) continue
+    const t = s.turnoDelGiorno[base + g]
+    if (t < 0 || !m.turni[t].contaNelleOre) continue
+    minuti += m.turni[t].durataMin * m.turni[t].pesoOre
+  }
+  return minuti / MIN_IN_H
 }
 
 /** Ore assegnate per tutte le settimane dell'orizzonte, incluso il contesto. */
@@ -1088,11 +1096,13 @@ export function trovaViolazioni(
     for (let settimana = 0; settimana < ore.length; settimana++) {
       if (ore[settimana] <= m.regole.maxOreSettimana + 1e-9) continue
       const nome = `${m.lavoratori[l].nome} ${m.lavoratori[l].cognome}`
+      const primoGiorno = m.settimanaDi.findIndex((indice) => indice === settimana)
+      const settimanaDal = primoGiorno >= 0 ? m.date[primoGiorno] : "sconosciuta"
       out.push({
         tipo: "max_ore_settimana",
         gravita: "bloccante",
         lavoratoreIdx: l,
-        messaggio: `${nome}: ${ore[settimana].toFixed(1)} ore nella settimana di calendario ${settimana + 1}, oltre il tetto globale di ${m.regole.maxOreSettimana} ore.`,
+        messaggio: `${nome}: ${ore[settimana].toFixed(1)} ore nella settimana che inizia il ${settimanaDal}, oltre il tetto globale di ${m.regole.maxOreSettimana} ore.`,
         riferimenti: {
           lavoratoreId: m.lavoratori[l].id,
           settimana,
