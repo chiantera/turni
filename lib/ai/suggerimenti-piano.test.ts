@@ -64,6 +64,7 @@ describe("suggerimenti AI per un piano con segnalazioni", () => {
     expect(prompt).toContain('"al": "2026-09-10"')
     expect(prompt).toContain("NON modificare dati")
     expect(prompt).toContain("non garantire che una proposta risolva il piano")
+    expect(prompt).toContain("evidenze deterministiche")
   })
 
   it("accetta solo suggerimenti strutturati e percorsi applicativi noti", () => {
@@ -143,5 +144,25 @@ describe("suggerimenti AI per un piano con segnalazioni", () => {
     expect(ridotto.copertura).toEqual([contesto.copertura[0]])
     expect(ridotto.vincoli).toEqual(["Marco Rossi non fa notti"])
     expect(costruisciPromptSuggerimenti(ridotto)).toContain("SINGOLA SEGNALAZIONE")
+  })
+
+  it("usa l'identificativo del lavoratore quando il testo non lo nomina", () => {
+    const contestoConId: ContestoSuggerimentiPiano = {
+      ...contesto,
+      segnalazioni: [{ ...contesto.segnalazioni[0], riferimenti: { lavoratoreId: "w-2" } }],
+      lavoratori: [
+        { id: "w-1", nome: "Marco Rossi", oreSettimanali: 38, postazioni: ["Reparto A"] },
+        { id: "w-2", nome: "Luisa Verdi", oreSettimanali: 38, postazioni: ["Reparto B"] },
+      ],
+    }
+    const ridotto = riduciContestoAllaSegnalazione(
+      contestoConId,
+      contestoConId.segnalazioni[0],
+    )
+    expect(
+      ridotto.lavoratori.map(
+        (l: ContestoSuggerimentiPiano["lavoratori"][number]) => l.id,
+      ),
+    ).toEqual(["w-2"])
   })
 })

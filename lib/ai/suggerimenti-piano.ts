@@ -43,6 +43,7 @@ export interface ContestoSuggerimentiPiano {
   dal: string
   al: string
   segnalazioni: {
+    id?: string
     gravita: string
     tipo: string
     messaggio: string
@@ -50,12 +51,15 @@ export interface ContestoSuggerimentiPiano {
     riferimenti?: Record<string, unknown>
   }[]
   lavoratori: {
+    id?: string
     nome: string
     oreSettimanali: number
     postazioni: string[]
   }[]
-  turni: { codice: string; nome: string }[]
+  turni: { id?: string; codice: string; nome: string }[]
   copertura: {
+    postazioneId?: string
+    turnoId?: string
     postazione: string
     turno: string
     giornoSettimana: number | null
@@ -64,6 +68,17 @@ export interface ContestoSuggerimentiPiano {
   }[]
   assenze: number
   vincoli: string[]
+  vincoliStrutturati?: {
+    id: string
+    kind: string
+    isHard: boolean
+    peso: number
+    descrizione: string
+    params: Record<string, unknown>
+  }[]
+  regole?: Record<string, unknown>
+  pesi?: Record<string, unknown>
+  snapshot?: Record<string, unknown>
 }
 
 function riferimentoTestuale(
@@ -72,6 +87,14 @@ function riferimentoTestuale(
 ) {
   const valore = riferimenti?.[chiave]
   return typeof valore === "string" ? valore.toLocaleLowerCase("it") : null
+}
+
+function riferimentoId(
+  riferimenti: Record<string, unknown> | undefined,
+  chiave: string,
+) {
+  const valore = riferimenti?.[chiave]
+  return typeof valore === "string" ? valore : null
 }
 
 export function riduciContestoAllaSegnalazione(
@@ -84,6 +107,10 @@ export function riduciContestoAllaSegnalazione(
     "postazione",
   )
   const turnoRiferito = riferimentoTestuale(segnalazione.riferimenti, "turno")
+  const lavoratoreRiferito = riferimentoId(
+    segnalazione.riferimenti,
+    "lavoratoreId",
+  )
   const postazioniPertinenti = new Set(
     contesto.copertura
       .map((c) => c.postazione)
@@ -95,10 +122,12 @@ export function riduciContestoAllaSegnalazione(
   )
   const lavoratori = contesto.lavoratori.filter(
     (lavoratore) =>
-      testo.includes(lavoratore.nome.toLocaleLowerCase("it")) ||
-      lavoratore.postazioni.some((postazione) =>
-        postazioniPertinenti.has(postazione),
-      ),
+      lavoratoreRiferito !== null
+        ? lavoratore.id === lavoratoreRiferito
+        : testo.includes(lavoratore.nome.toLocaleLowerCase("it")) ||
+          lavoratore.postazioni.some((postazione) =>
+            postazioniPertinenti.has(postazione),
+          ),
   )
   const turni = contesto.turni.filter((turno) => {
     const codice = turno.codice.toLocaleLowerCase("it")
@@ -139,15 +168,21 @@ export function costruisciPromptSuggerimenti(
       ? "SINGOLA SEGNALAZIONE: analizza esclusivamente il problema indicato e proponi interventi mirati."
       : "ANALISI COMPLETA: considera insieme tutte le segnalazioni del piano."
   return `Sei un consulente esperto di pianificazione dei turni di lavoro.
-Analizza un piano che il solver non è riuscito a completare senza segnalazioni.
+Analizza evidenze deterministiche prodotte dal solver, non soltanto il testo delle segnalazioni.
 
 OBIETTIVO
 ${obiettivo}
 Proponi interventi concreti e verificabili che un pianificatore può valutare.
-Distingui la causa probabile dalle ipotesi. NON modificare dati e non presentare
+Distingui le cause dimostrate dalle ipotesi. NON modificare dati e non presentare
 alcun suggerimento come applicato. Non inventare lavoratori, turni, postazioni,
 assenze o vincoli. Se i dati non bastano, dichiaralo. Devi sempre ricordare che
 occorre rieseguire il solver: non garantire che una proposta risolva il piano.
+Non chiamare "fallimento del solver" una capacità contrattuale eccedente la
+copertura. Non attribuire mai la causa a una regola se i blocker o una
+simulazione controfattuale non la collegano al buco. Assenze, abilitazioni e
+riposo minimo non sono regole aziendali da rilassare automaticamente. Se la
+copertura è completa o nessuna modifica è supportata dalle evidenze, proponi
+esplicitamente di non cambiare le regole.
 
 DATI REALI DEL PIANO
 ${JSON.stringify(contesto, null, 2)}

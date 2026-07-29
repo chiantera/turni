@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { createHash } from "node:crypto"
 
 import { generaSuggerimentiPiano } from "@/lib/ai/analisi-segnalazioni"
 import { ErroreConfigurazioneAI } from "@/lib/ai/provider"
@@ -15,6 +16,7 @@ import {
   segnalazioneRilevante,
 } from "@/lib/dati/intervallo"
 import { caricaDatiSolver } from "@/lib/dati/piano"
+import { serializzaDatiPerImpronta } from "@/lib/solver/serializzazione"
 import { creaClientServer, ePianificatore } from "@/lib/supabase/server"
 
 export const runtime = "nodejs"
@@ -24,6 +26,11 @@ function riferimentiOggetto(valore: unknown): Record<string, unknown> | undefine
   return valore !== null && typeof valore === "object" && !Array.isArray(valore)
     ? (valore as Record<string, unknown>)
     : undefined
+}
+
+function diagnosticaDaPunteggio(valore: unknown): Record<string, unknown> | undefined {
+  const punteggio = riferimentiOggetto(valore)
+  return riferimentiOggetto(punteggio?.diagnostica)
 }
 
 export async function POST(req: Request) {
@@ -69,7 +76,7 @@ export async function POST(req: Request) {
   try {
     const piani = await sb
       .from("schedules")
-      .select("id")
+      .select("id, punteggio")
       .in("mese", mesiIntervallo(intervallo.dal, intervallo.al))
     if (piani.error) throw piani.error
     if (!piani.data?.length) {
@@ -104,6 +111,13 @@ export async function POST(req: Request) {
     }
 
     const dati = await caricaDatiSolver(intervallo.dal, intervallo.al)
+    const improntaInput = createHash("sha256")
+      .update(serializzaDatiPerImpronta(dati))
+      .digest("hex")
+    const snapshot = diagnosticaDaPunteggio(piani.data?.[0]?.punteggio)
+    const snapshotConStato = snapshot
+      ? { ...snapshot, obsoleto: snapshot.improntaInput !== improntaInput }
+      : { disponibile: false, obsoleto: true }
     const postazionePerId = new Map(dati.postazioni.map((p) => [p.id, p.nome]))
     const turnoPerId = new Map(dati.turni.map((t) => [t.id, t]))
     const abilitazioniPerLavoratore = new Map<string, string[]>()
@@ -118,6 +132,7 @@ export async function POST(req: Request) {
       dal: intervallo.dal,
       al: intervallo.al,
       segnalazioni: segnalazioniRilevanti.slice(0, 100).map((segnalazione) => ({
+        id: segnalazione.id,
         gravita: segnalazione.gravita,
         tipo: segnalazione.tipo,
         messaggio: segnalazione.messaggio,
@@ -125,12 +140,15 @@ export async function POST(req: Request) {
         riferimenti: riferimentiOggetto(segnalazione.riferimenti),
       })),
       lavoratori: dati.lavoratori.map((l) => ({
+        id: l.id,
         nome: `${l.nome} ${l.cognome}`,
         oreSettimanali: l.ore_settimanali,
         postazioni: abilitazioniPerLavoratore.get(l.id) ?? [],
       })),
-      turni: dati.turni.map((t) => ({ codice: t.codice, nome: t.nome })),
+      turni: dati.turni.map((t) => ({ id: t.id, codice: t.codice, nome: t.nome })),
       copertura: dati.copertura.map((c) => ({
+        postazioneId: c.position_id,
+        turnoId: c.shift_type_id,
         postazione: postazionePerId.get(c.position_id) ?? c.position_id,
         turno: turnoPerId.get(c.shift_type_id)?.codice ?? c.shift_type_id,
         giornoSettimana: c.giorno_settimana,
@@ -139,6 +157,17 @@ export async function POST(req: Request) {
       })),
       assenze: dati.assenze.length,
       vincoli: dati.vincoli.map((v) => v.descrizione),
+      vincoliStrutturati: dati.vincoli.map((v) => ({
+        id: v.id,
+        kind: v.kind,
+        isHard: v.isHard,
+        peso: v.peso,
+        descrizione: v.descrizione,
+        params: v.params,
+      })),
+      regole: { ...dati.regole },
+      pesi: { ...dati.pesi },
+      snapshot: snapshotConStato,
     }
     const contesto = segnalazioneId
       ? riduciContestoAllaSegnalazione(
