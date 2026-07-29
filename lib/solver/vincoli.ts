@@ -202,7 +202,7 @@ export function compilaVincoli(m: Modello): VincoliCompilati {
           for (const t of turni) {
             const i = lav * nG * nT + g * nT + t
             if (v.isHard) c.vietato[i] = 1
-            else c.preferenza[i] += v.peso // costo positivo = da evitare
+            else c.preferenza[i] += v.peso * m.pesi.preferenze // costo positivo = da evitare
           }
         }
         applica()
@@ -226,7 +226,8 @@ export function compilaVincoli(m: Modello): VincoliCompilati {
         for (const g of giorniValidi) {
           for (const t of turni) {
             // Premio: costo negativo quando la preferenza è soddisfatta.
-            c.preferenza[lav * nG * nT + g * nT + t] -= v.peso
+            c.preferenza[lav * nG * nT + g * nT + t] -=
+              v.peso * m.pesi.preferenze
           }
         }
         applica()
@@ -476,6 +477,16 @@ export function puoAssegnare(
     if (s.turnoDelGiorno[altro * nG + g] === t) return false
   }
 
+  // 9. Tetto globale delle ore nella settimana di calendario.
+  const turno = m.turni[t]
+  if (turno.contaNelleOre) {
+    const settimana = m.settimanaDi[g]
+    const oreDopo =
+      oreSettimana(m, s, lav, settimana) +
+      (turno.durataMin * turno.pesoOre) / MIN_IN_H
+    if (oreDopo > m.regole.maxOreSettimana + 1e-9) return false
+  }
+
   return true
 }
 
@@ -559,6 +570,24 @@ function contaTurni(
     if (s.turnoDelGiorno[base + g] === turno) n++
   }
   return n
+}
+
+/** Ore già assegnate al lavoratore in una settimana di calendario. */
+export function oreSettimana(
+  m: Modello,
+  s: Stato,
+  lav: number,
+  settimana: number,
+): number {
+  let minuti = 0
+  const base = lav * m.nGiorni
+  for (let g = 0; g < m.nGiorni; g++) {
+    if (m.settimanaDi[g] !== settimana) continue
+    const t = s.turnoDelGiorno[base + g]
+    if (t < 0 || !m.turni[t].contaNelleOre) continue
+    minuti += m.turni[t].durataMin * m.turni[t].pesoOre
+  }
+  return minuti / MIN_IN_H
 }
 
 // ---------------------------------------------------------------------------

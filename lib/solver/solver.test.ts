@@ -4,6 +4,7 @@ import { costruisciModello, PESI_DEFAULT, REGOLE_DEFAULT } from "./modello"
 import { scenario } from "./scenari"
 import { verificaFattibilita } from "./fattibilita"
 import type { Vincolo } from "./tipi"
+import { compilaVincoli } from "./vincoli"
 
 const ORA = 3_600_000
 
@@ -752,5 +753,42 @@ describe("orizzonte di pianificazione personalizzato", () => {
 
     expect(esito.modello.date).toEqual(["2026-08-31", "2026-09-01"])
     expect(esito.slotScoperti).toBe(1)
+  })
+
+  it("enforce il tetto globale delle ore settimanali", () => {
+    const dati = scenario()
+    dati.regole = { ...dati.regole, maxOreSettimana: 1 }
+
+    const esito = generaPiano(dati, { seme: 1, tempoMaxMs: 0 })
+
+    expect(
+      esito.riepiloghi.every((r) => r.orePerSettimana.every((ore) => ore <= 1)),
+    ).toBe(true)
+    expect(esito.slotScoperti).toBeGreaterThan(0)
+  })
+
+  it("scala le preferenze con il peso globale configurato", () => {
+    const vincolo: Vincolo = {
+      id: "v-preferenza",
+      kind: "preferenza",
+      isHard: false,
+      peso: 2,
+      descrizione: "Preferenza mattino",
+      params: { lavoratore: "l-0", turni: ["t-m"] },
+    }
+    const datiBase = scenario({ vincoli: [vincolo] })
+    const modelloSenzaPeso = costruisciModello({
+      ...datiBase,
+      pesi: { ...PESI_DEFAULT, preferenze: 0 },
+    })
+    const modelloConPeso = costruisciModello({
+      ...datiBase,
+      pesi: { ...PESI_DEFAULT, preferenze: 3 },
+    })
+    const cSenzaPeso = compilaVincoli(modelloSenzaPeso)
+    const cConPeso = compilaVincoli(modelloConPeso)
+
+    expect(cSenzaPeso.preferenza[0]).toBe(0)
+    expect(cConPeso.preferenza[0]).toBe(-6)
   })
 })
