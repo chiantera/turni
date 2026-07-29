@@ -61,6 +61,22 @@ export async function caricaDatiSolver(dal: string, al?: string): Promise<DatiIn
       .lte("data", fineContesto),
   ])
 
+  const erroreLettura = [
+    turni,
+    postazioni,
+    lavoratori,
+    abilitazioni,
+    copertura,
+    festivita,
+    assenze,
+    vincoliDb,
+    impostazioni,
+    esistenti,
+  ].find((risultato) => risultato.error)?.error
+  if (erroreLettura) {
+    throw new Error(`Impossibile caricare i dati di pianificazione: ${erroreLettura.message}`)
+  }
+
   const imp = new Map((impostazioni.data ?? []).map((r) => [r.chiave, r.valore]))
   const pesi = { ...PESI_DEFAULT, ...(imp.get("pesi") as Partial<Pesi> | undefined) }
   const regoleGrezze = imp.get("regole") as Record<string, number> | undefined

@@ -605,13 +605,14 @@ export function trovaViolazioni(
 
     let serie = 0
     for (let g = 0; g < nG; g++) {
+      const nelPeriodo = g >= m.offsetPeriodo && g < m.fineOffsetPeriodo
       const t = s.turnoDelGiorno[base + g]
       if (t === -1) {
         serie = 0
         continue
       }
       serie++
-      if (serie > L.maxGiorniConsecutivi && g >= m.offsetPeriodo) {
+      if (serie > L.maxGiorniConsecutivi && nelPeriodo) {
         out.push({
           tipo: "giorni_consecutivi",
           gravita: "bloccante",
@@ -628,7 +629,7 @@ export function trovaViolazioni(
         const stacco =
           (m.inizioUtc[g * nT + t] - m.fineUtc[(g - d) * nT + tp]) / MS_IN_H
         const richiesto = m.turni[tp].isNotte ? L.riposoDopoNotteH : m.regole.riposoMinOre
-        if (stacco < richiesto && g >= m.offsetPeriodo) {
+        if (stacco < richiesto && nelPeriodo) {
           out.push({
             tipo: m.turni[tp].isNotte ? "riposo_dopo_notte" : "riposo_minimo",
             gravita: "bloccante",
@@ -643,7 +644,7 @@ export function trovaViolazioni(
       }
 
       // Assenza ignorata da un blocco manuale
-      if (m.assente[base + g]) {
+      if (m.assente[base + g] && nelPeriodo) {
         out.push({
           tipo: "assenza",
           gravita: "bloccante",
