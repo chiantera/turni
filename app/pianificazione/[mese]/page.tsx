@@ -25,6 +25,43 @@ import TabellaPianoInterattiva from "./TabellaPianoInterattiva"
 type Assegnazione = Tables<"assignments">
 type Violazione = Tables<"violations">
 
+function evidenzaViolazione(violazione: Violazione): string | null {
+  const riferimenti =
+    violazione.riferimenti !== null &&
+    typeof violazione.riferimenti === "object" &&
+    !Array.isArray(violazione.riferimenti)
+      ? (violazione.riferimenti as Record<string, unknown>)
+      : null
+  if (!riferimenti) return null
+
+  if (
+    violazione.tipo === "capacita_eccedente" &&
+    typeof riferimenti.oreEccedenti === "number"
+  ) {
+    return `Evidenza solver: la copertura è completa; restano circa ${riferimenti.oreEccedenti.toFixed(1)} ore contrattuali oltre ai turni richiesti.`
+  }
+
+  const blocker = riferimenti.blocker
+  if (!Array.isArray(blocker) || blocker.length === 0) return null
+  const etichette: Record<string, string> = {
+    assenza: "assenze",
+    abilitazione_mancante: "abilitazioni mancanti",
+    max_ore_settimana: "tetto ore settimanale",
+    riposo_insufficiente: "riposo minimo",
+    giorni_consecutivi: "giorni consecutivi",
+    postazione_vietata: "postazione vietata",
+    turno_vietato: "turno vietato",
+  }
+  const nomi = blocker
+    .map((voce) =>
+      voce && typeof voce === "object" && "codice" in voce
+        ? etichette[String(voce.codice)] ?? String(voce.codice)
+        : null,
+    )
+    .filter((nome): nome is string => nome !== null)
+  return nomi.length > 0 ? `Cause esaminate: ${[...new Set(nomi)].join(", ")}.` : null
+}
+
 export const dynamic = "force-dynamic"
 
 export async function generateMetadata({
@@ -194,6 +231,11 @@ export default async function Pianificazione({
                     className="rounded-lg bg-allarme-tenue px-3 py-2 text-sm text-allarme"
                   >
                     {violazione.messaggio}
+                    {evidenzaViolazione(violazione) && (
+                      <p className="mt-1 text-xs text-current/80">
+                        {evidenzaViolazione(violazione)}
+                      </p>
+                    )}
                     <SuggerimentiAI
                       dal={dal}
                       al={al}
@@ -213,6 +255,11 @@ export default async function Pianificazione({
                   {altre.map((violazione) => (
                     <li key={violazione.id} className="px-3 py-1.5 text-sm text-tenue">
                       {violazione.messaggio}
+                      {evidenzaViolazione(violazione) && (
+                        <p className="mt-1 text-xs text-current/80">
+                          {evidenzaViolazione(violazione)}
+                        </p>
+                      )}
                       <SuggerimentiAI
                         dal={dal}
                         al={al}

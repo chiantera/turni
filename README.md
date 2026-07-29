@@ -172,6 +172,32 @@ valutati dal pianificatore e verificati con una nuova esecuzione del solver.
   `ai_interactions`; anche gli errori restituiti al browser sono neutralizzati e
   non rivelano dettagli del provider o dell'infrastruttura.
 
+#### Diagnostica causale e snapshot / Causal diagnostics and snapshots
+
+Le segnalazioni non sono più soltanto testo. Ogni buco di copertura conserva la
+chiave stabile di data/postazione/turno e un riepilogo dei blocker esaminati:
+assenza, abilitazione, riposo, tetto settimanale e vincoli applicabili. Una
+copertura completa con obiettivi contrattuali superiori alla domanda viene
+classificata come **capacità eccedente**, non come turni mancanti. La schermata
+mostra questa evidenza prima del pulsante AI.
+
+Violations carry stable slot references and structured blocker evidence. Full
+coverage with contractual targets above actual demand is classified as
+**excess capacity**, not as a solver failure. The planning screen shows this
+evidence before offering AI advice.
+
+Ogni generazione salva nel punteggio uno snapshot diagnostico versionato con
+intervallo, seme, qualità della ricerca, fattibilità, violazioni e impronta
+SHA-256 degli input di configurazione. L'analisi AI confronta l'impronta con i
+dati correnti e contrassegna lo snapshot come obsoleto quando le regole sono
+cambiate; non viene quindi presentata una vecchia diagnosi come attuale.
+
+Each generation stores a versioned diagnostic snapshot in the schedule score,
+including the inclusive range, seed, search quality, feasibility, violations,
+and a SHA-256 input fingerprint. AI analysis compares that fingerprint with
+current configuration data and marks stale snapshots instead of presenting
+old evidence as current.
+
 ### Il solver — `lib/solver/`
 
 Tre fasi, dalla più strutturata alla più opportunistica:
@@ -191,8 +217,14 @@ riportati esplicitamente. Le assegnazioni fisse importate dai dati sono
 installate separatamente e devono quindi essere valide a monte.
 
 Le fasi ciclica e greedy sono **riproducibili**: stesso seme + stessi dati
-producono lo stesso risultato. La ricerca locale è invece limitata dal tempo e
-può eseguire un numero diverso di iterazioni in base al carico della macchina.
+producono lo stesso risultato. La ricerca locale accetta anche un budget
+deterministico `iterazioniMax`, utile per confronti e test ripetibili; in
+assenza di tale budget resta limitata dal tempo e può eseguire un numero
+diverso di iterazioni in base al carico della macchina.
+
+The cyclic and greedy phases are reproducible. Local search also accepts the
+deterministic `iterazioniMax` budget for repeatable comparisons; without it,
+the wall-clock limit remains the intended production trade-off.
 
 #### Ore contrattuali contro riposo reale
 
