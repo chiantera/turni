@@ -776,6 +776,31 @@ describe("orizzonte di pianificazione personalizzato", () => {
     expect(esito.slotScoperti).toBeGreaterThan(0)
   })
 
+  it("considera il contesto e segnala un fisso già oltre il tetto settimanale", () => {
+    const dati = scenario({ nLavoratori: 1 })
+    dati.regole = { ...dati.regole, maxOreSettimana: 14 }
+    dati.assegnazioniEsistenti = ["2026-07-27", "2026-07-28", "2026-07-29"].map(
+      (data) => ({
+        data,
+        worker_id: "l-0",
+        shift_type_id: "t-m",
+        position_id: "p-0",
+        bloccato: false,
+      }),
+    )
+
+    const esito = generaPiano(dati, { seme: 1, tempoMaxMs: 0 })
+    const riepilogo = esito.riepiloghi[0]
+    const violazione = esito.violazioni.find((v) => v.tipo === "max_ore_settimana")
+
+    expect(Math.max(...riepilogo.orePerSettimana)).toBeGreaterThan(14)
+    expect(violazione).toMatchObject({
+      gravita: "bloccante",
+      lavoratoreIdx: 0,
+      riferimenti: { includeContesto: true, soglia: 14 },
+    })
+  })
+
   it("scala le preferenze con il peso globale configurato", () => {
     const vincolo: Vincolo = {
       id: "v-preferenza",
@@ -799,6 +824,20 @@ describe("orizzonte di pianificazione personalizzato", () => {
 
     expect(cSenzaPeso.preferenza[0]).toBe(0)
     expect(cConPeso.preferenza[0]).toBe(-6)
+    expect(cConPeso.preferenza.filter((valore) => valore === -6).length).toBeGreaterThan(1)
+
+    const indisponibile: Vincolo = {
+      id: "v-indisponibile-soft",
+      kind: "indisponibile",
+      isHard: false,
+      peso: 2,
+      descrizione: "Preferenza senza mattino",
+      params: { lavoratore: "l-0", turni: ["t-m"] },
+    }
+    const cSoft = compilaVincoli(
+      costruisciModello({ ...datiBase, vincoli: [indisponibile], pesi: { ...PESI_DEFAULT, preferenze: 3 } }),
+    )
+    expect(cSoft.preferenza.some((valore) => valore === 6)).toBe(true)
   })
 })
 

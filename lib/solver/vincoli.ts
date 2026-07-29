@@ -707,15 +707,24 @@ export function oreSettimana(
   lav: number,
   settimana: number,
 ): number {
-  let minuti = 0
+  return orePerSettimana(m, s, lav)[settimana] ?? 0
+}
+
+/** Ore assegnate per tutte le settimane dell'orizzonte, incluso il contesto. */
+export function orePerSettimana(
+  m: Modello,
+  s: Stato,
+  lav: number,
+): number[] {
+  const minutiPerSettimana = new Array(m.nSettimane).fill(0) as number[]
   const base = lav * m.nGiorni
   for (let g = 0; g < m.nGiorni; g++) {
-    if (m.settimanaDi[g] !== settimana) continue
     const t = s.turnoDelGiorno[base + g]
     if (t < 0 || !m.turni[t].contaNelleOre) continue
-    minuti += m.turni[t].durataMin * m.turni[t].pesoOre
+    minutiPerSettimana[m.settimanaDi[g]] +=
+      m.turni[t].durataMin * m.turni[t].pesoOre
   }
-  return minuti / MIN_IN_H
+  return minutiPerSettimana.map((minuti) => minuti / MIN_IN_H)
 }
 
 // ---------------------------------------------------------------------------
@@ -1054,6 +1063,28 @@ export function trovaViolazioni(
     }
   }
 
+  // --- Tetto ore settimanale, incluso il contesto ---------------------------
+  for (let l = 0; l < m.lavoratori.length; l++) {
+    const ore = orePerSettimana(m, s, l)
+    for (let settimana = 0; settimana < ore.length; settimana++) {
+      if (ore[settimana] <= m.regole.maxOreSettimana + 1e-9) continue
+      const nome = `${m.lavoratori[l].nome} ${m.lavoratori[l].cognome}`
+      out.push({
+        tipo: "max_ore_settimana",
+        gravita: "bloccante",
+        lavoratoreIdx: l,
+        messaggio: `${nome}: ${ore[settimana].toFixed(1)} ore nella settimana di calendario ${settimana + 1}, oltre il tetto globale di ${m.regole.maxOreSettimana} ore.`,
+        riferimenti: {
+          lavoratoreId: m.lavoratori[l].id,
+          settimana,
+          oreAttuali: ore[settimana],
+          soglia: m.regole.maxOreSettimana,
+          includeContesto: true,
+        },
+      })
+    }
+  }
+
   // --- Monte ore ------------------------------------------------------------
   const riepiloghiPiano = riepiloghi(m, s, c)
   const oreRichieste = m.slots.reduce((totale, sl) => {
@@ -1108,7 +1139,7 @@ export function riepiloghi(m: Modello, s: Stato, c: VincoliCompilati) {
     const base = l * nG
     const oreSett = c.oreOverride.get(l) ?? L.oreSettimanali
     const perCodice: Record<string, number> = {}
-    const orePerSettimana = new Array(m.nSettimane).fill(0)
+    const orePerSettimanaReport = orePerSettimana(m, s, l)
     let minuti = 0
     let notti = 0
     let festiviLavorati = 0
@@ -1125,7 +1156,6 @@ export function riepiloghi(m: Modello, s: Stato, c: VincoliCompilati) {
       if (tt.contaNelleOre) {
         const min = tt.durataMin * tt.pesoOre
         minuti += min
-        orePerSettimana[m.settimanaDi[g]] += min / 60
       }
     }
 
@@ -1138,7 +1168,7 @@ export function riepiloghi(m: Modello, s: Stato, c: VincoliCompilati) {
       notti,
       weekendLavorati: festiviLavorati,
       giorniLavorati,
-      orePerSettimana,
+      orePerSettimana: orePerSettimanaReport,
     })
   }
   return out
