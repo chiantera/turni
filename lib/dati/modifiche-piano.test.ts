@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   aggiornaCellaLavoratore,
   aggiornaCellaPostazione,
+  lavoratoriCellaPostazione,
   calcolaModifiche,
   codificaScelta,
   decodificaScelta,
@@ -140,6 +141,32 @@ describe("preparazione del salvataggio", () => {
 })
 
 describe("interazioni sulle tabelle colorate", () => {
+  it("propaga una modifica per lavoratore nella proiezione per postazione", () => {
+    const correnti = aggiornaCellaLavoratore(
+      [mattinoRepartoA],
+      "worker-1",
+      "2026-08-03",
+      { shiftTypeId: "shift-p", positionId: "position-b" },
+    )
+
+    expect(
+      lavoratoriCellaPostazione(
+        correnti,
+        "position-b",
+        "shift-p",
+        "2026-08-03",
+      ),
+    ).toEqual(["worker-1"])
+    expect(
+      lavoratoriCellaPostazione(
+        correnti,
+        "position-a",
+        "shift-m",
+        "2026-08-03",
+      ),
+    ).toEqual([])
+  })
+
   it("sostituisce o rimuove il turno cliccato nella vista per lavoratore", () => {
     const sostituita = aggiornaCellaLavoratore(
       [mattinoRepartoA],

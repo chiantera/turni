@@ -93,6 +93,22 @@ export function aggiornaCellaPostazione(
   return prossime
 }
 
+export function lavoratoriCellaPostazione(
+  correnti: AssegnazioneModificabile[],
+  positionId: string,
+  shiftTypeId: string,
+  data: string,
+): string[] {
+  return correnti
+    .filter(
+      (a) =>
+        a.positionId === positionId &&
+        a.shiftTypeId === shiftTypeId &&
+        a.data === data,
+    )
+    .map((a) => a.workerId)
+}
+
 function dataIsoValida(data: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return false
   const d = new Date(`${data}T00:00:00Z`)

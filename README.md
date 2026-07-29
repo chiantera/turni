@@ -57,12 +57,21 @@ interattive senza perdere il formato compatto e i colori dei turni:
   permette di aggiungere o rimuovere i lavoratori. Se un lavoratore è già
   impegnato nello stesso giorno, viene spostato nella nuova cella;
 - le celle modificate sono segnalate senza alterare i colori del piano;
+- le due viste condividono lo stesso piano in memoria: passando da una vista
+  all'altra si vedono subito le stesse modifiche;
 - **Salva modifiche** scrive in Supabase solo le celle cambiate, mentre
   **Annulla** ripristina l'ultimo stato salvato.
 
 Le assegnazioni manuali vengono memorizzate con origine `manuale` e marcate
 come bloccate. Una nuova generazione del piano sostituisce comunque l'intero
 mese, comportamento indicato anche nell'interfaccia.
+
+Se il solver lascia delle **segnalazioni**, la pagina di pianificazione espone
+un'analisi AI su richiesta. L'assistente confronta le segnalazioni con
+copertura, organico, abilitazioni, assenze e vincoli, quindi propone interventi
+prioritizzati e collegamenti alle aree pertinenti. I suggerimenti non modificano
+automaticamente alcun dato: vanno valutati dal pianificatore e verificati con
+una nuova esecuzione del solver.
 
 ### Il solver — `lib/solver/`
 
@@ -290,12 +299,21 @@ preserving the compact layout and the shift colors:
   add or remove workers. A worker already assigned on that day is moved to the
   selected cell;
 - changed cells are indicated without replacing the schedule's color coding;
+- both views share the same in-memory schedule, so switching views immediately
+  shows the same changes;
 - **Save changes** persists only changed cells to Supabase, while **Cancel**
   restores the last saved state.
 
 Manual assignments are stored with `manuale` origin and marked as locked.
 Generating the month again still replaces the complete schedule, and the UI
 states this explicitly.
+
+When the solver leaves **diagnostics**, the planning page offers an on-demand
+AI analysis. The assistant compares diagnostics with coverage, staffing,
+qualifications, absences, and constraints, then returns prioritized suggestions
+and links to the relevant application areas. Suggestions never modify data
+automatically: a planner must evaluate them and verify the result by running
+the solver again.
 
 ### Solver — `lib/solver/`
 

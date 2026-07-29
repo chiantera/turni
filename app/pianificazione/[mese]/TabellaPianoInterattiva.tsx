@@ -8,6 +8,7 @@ import {
   aggiornaCellaLavoratore,
   aggiornaCellaPostazione,
   calcolaModifiche,
+  lavoratoriCellaPostazione,
   type AssegnazioneModificabile,
 } from "@/lib/dati/modifiche-piano"
 import { giornoSettimana } from "@/lib/solver/tempo"
@@ -40,7 +41,7 @@ function chiave(workerId: string, data: string) {
 
 export default function TabellaPianoInterattiva({
   mese,
-  vista,
+  vista: vistaIniziale,
   giorni,
   festivi,
   lavoratori,
@@ -62,6 +63,7 @@ export default function TabellaPianoInterattiva({
   )
   const [iniziali, setIniziali] = useState(inizialiDaServer)
   const [correnti, setCorrenti] = useState(inizialiDaServer)
+  const [vista, setVista] = useState(vistaIniziale)
   const [editor, setEditor] = useState<Editor | null>(null)
   const [turnoScelto, setTurnoScelto] = useState("")
   const [postazioneScelta, setPostazioneScelta] = useState("")
@@ -118,7 +120,12 @@ export default function TabellaPianoInterattiva({
   }
 
   function apriPostazione(positionId: string, shiftTypeId: string, data: string) {
-    const ids = perPostTurnoGiorno.get(`${positionId}:${shiftTypeId}:${data}`) ?? []
+    const ids = lavoratoriCellaPostazione(
+      correnti,
+      positionId,
+      shiftTypeId,
+      data,
+    )
     setLavoratoriScelti(new Set(ids))
     setEditor({ tipo: "postazione", positionId, shiftTypeId, data })
   }
@@ -179,7 +186,9 @@ export default function TabellaPianoInterattiva({
       const dati = await risposta.json()
       if (!risposta.ok) throw new Error(dati.errore ?? "Salvataggio non riuscito.")
       setIniziali(correnti)
-      setEsito(`${dati.salvate} ${dati.salvate === 1 ? "modifica salvata" : "modifiche salvate"}.`)
+      setEsito(
+        `${dati.salvate} ${dati.salvate === 1 ? "modifica salvata" : "modifiche salvate"}. Le due viste sono sincronizzate.`,
+      )
       router.refresh()
     } catch (e) {
       setErrore(e instanceof Error ? e.message : "Errore imprevisto.")
@@ -213,6 +222,22 @@ export default function TabellaPianoInterattiva({
   return (
     <div className="space-y-3">
       <div className="no-stampa flex flex-wrap items-center gap-3 rounded-lg border border-bordo bg-superficie px-3 py-2">
+        <div className="flex items-center gap-1 rounded-lg bg-sfondo p-1 text-sm">
+          <button
+            type="button"
+            className={`rounded-md px-2.5 py-1 transition-colors ${vista === "lavoratore" ? "bg-superficie font-medium shadow-sm" : "text-tenue hover:text-testo"}`}
+            onClick={() => setVista("lavoratore")}
+          >
+            per lavoratore
+          </button>
+          <button
+            type="button"
+            className={`rounded-md px-2.5 py-1 transition-colors ${vista === "postazione" ? "bg-superficie font-medium shadow-sm" : "text-tenue hover:text-testo"}`}
+            onClick={() => setVista("postazione")}
+          >
+            per postazione
+          </button>
+        </div>
         <p className="text-sm text-tenue">
           Clicca una cella per modificarla
           {vista === "postazione" ? " e scegliere i lavoratori assegnati" : ""}.

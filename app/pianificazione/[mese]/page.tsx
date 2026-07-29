@@ -2,6 +2,7 @@ import Link from "next/link"
 
 import Navigazione from "@/app/componenti/Navigazione"
 import BarraAzioni from "./BarraAzioni"
+import SuggerimentiAI from "./SuggerimentiAI"
 import TabellaPianoInterattiva from "./TabellaPianoInterattiva"
 import {
   GIORNI_BREVI,
@@ -170,25 +171,13 @@ export default async function Pianificazione({
                 </ul>
               </details>
             )}
+
+            <SuggerimentiAI
+              mese={mese}
+              numeroSegnalazioni={violazioni.length}
+            />
           </section>
         )}
-
-        {/* --- Selettore vista --- */}
-        <div className="no-stampa flex items-center gap-2 text-sm">
-          <span className="text-tenue">Vista:</span>
-          <Link
-            href={`/pianificazione/${mese}?vista=lavoratore`}
-            className={`bottone py-1 ${vista === "lavoratore" ? "bottone-primario" : ""}`}
-          >
-            per lavoratore
-          </Link>
-          <Link
-            href={`/pianificazione/${mese}?vista=postazione`}
-            className={`bottone py-1 ${vista === "postazione" ? "bottone-primario" : ""}`}
-          >
-            per postazione
-          </Link>
-        </div>
 
         {/* --- Griglia --- */}
         {!piano.data ? (
