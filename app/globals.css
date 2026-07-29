@@ -1,0 +1,123 @@
+@import "tailwindcss";
+
+:root {
+  --sfondo: #f8fafc;
+  --superficie: #ffffff;
+  --testo: #0f172a;
+  --testo-tenue: #64748b;
+  --bordo: #e2e8f0;
+  --accento: #0f766e;
+  --accento-tenue: #f0fdfa;
+  --allarme: #b91c1c;
+  --allarme-tenue: #fef2f2;
+  --avviso: #a16207;
+  --avviso-tenue: #fefce8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --sfondo: #0b1120;
+    --superficie: #111827;
+    --testo: #e2e8f0;
+    --testo-tenue: #94a3b8;
+    --bordo: #1e293b;
+    --accento: #2dd4bf;
+    --accento-tenue: #0f2b2a;
+    --allarme: #f87171;
+    --allarme-tenue: #2a1414;
+    --avviso: #fbbf24;
+    --avviso-tenue: #2a2411;
+  }
+}
+
+@theme inline {
+  --color-sfondo: var(--sfondo);
+  --color-superficie: var(--superficie);
+  --color-testo: var(--testo);
+  --color-tenue: var(--testo-tenue);
+  --color-bordo: var(--bordo);
+  --color-accento: var(--accento);
+  --color-accento-tenue: var(--accento-tenue);
+  --color-allarme: var(--allarme);
+  --color-allarme-tenue: var(--allarme-tenue);
+  --color-avviso: var(--avviso);
+  --color-avviso-tenue: var(--avviso-tenue);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--sfondo);
+  color: var(--testo);
+}
+
+/* --- Elementi ricorrenti ------------------------------------------------- */
+
+.scheda {
+  background: var(--superficie);
+  border: 1px solid var(--bordo);
+  border-radius: 0.75rem;
+}
+
+.campo {
+  width: 100%;
+  background: var(--superficie);
+  border: 1px solid var(--bordo);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--testo);
+}
+.campo:focus {
+  outline: 2px solid var(--accento);
+  outline-offset: -1px;
+}
+
+.bottone {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid var(--bordo);
+  background: var(--superficie);
+  color: var(--testo);
+  cursor: pointer;
+}
+.bottone:hover:not(:disabled) {
+  border-color: var(--accento);
+}
+.bottone:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.bottone-primario {
+  background: var(--accento);
+  border-color: var(--accento);
+  color: #ffffff;
+}
+.bottone-primario:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+/* --- Stampa: la griglia turni finisce spesso in bacheca ------------------ */
+
+@media print {
+  .no-stampa {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+    color: #000;
+  }
+  .scheda {
+    border-color: #999;
+    break-inside: avoid;
+  }
+  @page {
+    size: A3 landscape;
+    margin: 10mm;
+  }
+}
