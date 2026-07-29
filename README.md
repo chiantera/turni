@@ -53,6 +53,11 @@ interattive senza perdere il formato compatto. Il colore di ogni riquadro
 identifica la **postazione**, mentre le lettere **M**, **P** e **N** identificano
 rispettivamente il turno mattino, pomeriggio e notte:
 
+La legenda è generata dai dati correnti: nomi e colori delle postazioni, codici,
+nomi, orari di inizio/fine e durata dei turni. Salvare una modifica in
+**Postazioni** o **Turni** invalida le pagine di pianificazione, così la legenda
+viene ricostruita con i nuovi valori alla visita successiva.
+
 - nella vista **per lavoratore**, un clic sulla cella giorno/lavoratore apre
   l'editor per cambiare turno e postazione oppure impostare il riposo;
 - nella vista **per postazione**, un clic sulla cella giorno/postazione/turno
@@ -296,6 +301,11 @@ After **Generate schedule**, both grid projections remain interactive while
 preserving the compact layout. Each square's color identifies the **position**,
 while the letters **M**, **P**, and **N** identify the morning, afternoon, and
 night shifts respectively:
+
+The legend is generated from current data: position names and colors, plus
+shift codes, names, start/end times, and duration. Saving a change under
+**Positions** or **Shifts** invalidates the planning pages, so the legend is
+rebuilt with the updated values on the next visit.
 
 - in the **by worker** view, clicking a worker/day cell opens an editor to
   change the shift and position or mark the day as rest;

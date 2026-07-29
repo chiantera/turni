@@ -17,6 +17,30 @@ export function aspettoCellaPiano(
   }
 }
 
+export function creaLegendaPiano(
+  postazioni: { id: string; nome: string; colore: string }[],
+  turni: {
+    id: string
+    codice: string
+    nome: string
+    ora_inizio: string
+    ora_fine: string
+    durata_min: number
+  }[],
+) {
+  return {
+    postazioni: postazioni.map(({ id, nome, colore }) => ({ id, nome, colore })),
+    turni: turni.map((turno) => ({
+      id: turno.id,
+      codice: turno.codice,
+      nome: turno.nome,
+      oraInizio: turno.ora_inizio.slice(0, 5),
+      oraFine: turno.ora_fine.slice(0, 5),
+      durataMin: turno.durata_min,
+    })),
+  }
+}
+
 export class ErroreModifichePiano extends Error {}
 
 function chiaveCella(a: Pick<AssegnazioneModificabile, "workerId" | "data">): string {

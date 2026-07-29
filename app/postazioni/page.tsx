@@ -16,6 +16,7 @@ async function aggiungi(formData: FormData) {
     ordine: Number(formData.get("ordine") ?? 0),
   })
   revalidatePath("/postazioni")
+  revalidatePath("/pianificazione/[mese]", "page")
 }
 
 async function aggiorna(formData: FormData) {
@@ -32,6 +33,7 @@ async function aggiorna(formData: FormData) {
     })
     .eq("id", id)
   revalidatePath("/postazioni")
+  revalidatePath("/pianificazione/[mese]", "page")
 }
 
 async function elimina(formData: FormData) {
@@ -41,6 +43,7 @@ async function elimina(formData: FormData) {
   // già generati, e cancellarle ne riscriverebbe la storia.
   await sb.from("positions").update({ attiva: false }).eq("id", String(formData.get("id")))
   revalidatePath("/postazioni")
+  revalidatePath("/pianificazione/[mese]", "page")
 }
 
 export default async function Postazioni() {

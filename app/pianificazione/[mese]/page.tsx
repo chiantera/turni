@@ -342,33 +342,6 @@ export default async function Pianificazione({
           </section>
         )}
 
-        {/* --- Legenda --- */}
-        {((postazioni.data ?? []).length > 0 || (turni.data ?? []).length > 0) && (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-tenue">
-            <span className="font-medium text-testo">Postazioni:</span>
-            {(postazioni.data ?? []).map((p) => (
-              <span key={p.id} className="flex items-center gap-1.5">
-                <span
-                  className="inline-block h-5 w-5 rounded"
-                  style={{ backgroundColor: p.colore }}
-                />
-                {p.nome}
-              </span>
-            ))}
-            <span className="ml-2 font-medium text-testo">Turni:</span>
-            {(turni.data ?? []).map((t) => (
-              <span key={t.id} className="flex items-center gap-1.5">
-                <span
-                  className="inline-block h-5 w-5 rounded border border-bordo bg-superficie text-center text-xs font-medium leading-5 text-testo"
-                >
-                  {t.codice}
-                </span>
-                {t.nome} {t.ora_inizio.slice(0, 5)}–{t.ora_fine.slice(0, 5)} (
-                {(t.durata_min / 60).toString().replace(".", ",")}h)
-              </span>
-            ))}
-          </div>
-        )}
       </main>
     </>
   )

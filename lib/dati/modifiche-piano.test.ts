@@ -7,6 +7,7 @@ import {
   lavoratoriCellaPostazione,
   calcolaModifiche,
   codificaScelta,
+  creaLegendaPiano,
   decodificaScelta,
   preparaSalvataggioModifiche,
   validaModifichePiano,
@@ -150,6 +151,35 @@ describe("interazioni sulle tabelle colorate", () => {
         [{ id: "shift-m", codice: "M", colore: "#111111" }],
       ),
     ).toEqual({ colore: "#2563eb", codice: "M" })
+  })
+
+  it("ricostruisce la legenda dai nomi e dagli orari correnti", () => {
+    const legenda = creaLegendaPiano(
+      [{ id: "position-a", nome: "Terapia intensiva", colore: "#2563eb" }],
+      [
+        {
+          id: "shift-m",
+          codice: "M",
+          nome: "Mattino lungo",
+          ora_inizio: "06:30:00",
+          ora_fine: "14:30:00",
+          durata_min: 480,
+        },
+      ],
+    )
+
+    expect(legenda.postazioni[0]).toEqual({
+      id: "position-a",
+      nome: "Terapia intensiva",
+      colore: "#2563eb",
+    })
+    expect(legenda.turni[0]).toMatchObject({
+      codice: "M",
+      nome: "Mattino lungo",
+      oraInizio: "06:30",
+      oraFine: "14:30",
+      durataMin: 480,
+    })
   })
 
   it("propaga una modifica per lavoratore nella proiezione per postazione", () => {

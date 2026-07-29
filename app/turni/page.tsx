@@ -43,6 +43,7 @@ async function salva(formData: FormData) {
   else await sb.from("shift_types").insert(valori)
 
   revalidatePath("/turni")
+  revalidatePath("/pianificazione/[mese]", "page")
 }
 
 export default async function Turni() {

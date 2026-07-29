@@ -9,6 +9,7 @@ import {
   aggiornaCellaPostazione,
   aspettoCellaPiano,
   calcolaModifiche,
+  creaLegendaPiano,
   lavoratoriCellaPostazione,
   type AssegnazioneModificabile,
 } from "@/lib/dati/modifiche-piano"
@@ -112,6 +113,10 @@ export default function TabellaPianoInterattiva({
     }
     return m
   }, [abilitazioni])
+  const legenda = useMemo(
+    () => creaLegendaPiano(postazioni, turni),
+    [postazioni, turni],
+  )
 
   function apriLavoratore(workerId: string, data: string) {
     const corrente = perLavoratoreGiorno.get(chiave(workerId, data))
@@ -412,6 +417,41 @@ export default function TabellaPianoInterattiva({
           </tbody>
         </table>
       </section>
+
+      {(legenda.postazioni.length > 0 || legenda.turni.length > 0) && (
+        <section className="no-stampa scheda space-y-3 px-3 py-2.5 text-sm">
+          <p className="text-xs text-tenue">
+            Il colore identifica la postazione; la lettera identifica il turno.
+          </p>
+          {legenda.postazioni.length > 0 && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <span className="min-w-20 font-medium">Postazioni</span>
+              {legenda.postazioni.map((postazione) => (
+                <span key={postazione.id} className="flex items-center gap-1.5 text-tenue">
+                  <span
+                    className="inline-block h-5 w-5 rounded shadow-sm"
+                    style={{ backgroundColor: postazione.colore }}
+                  />
+                  {postazione.nome}
+                </span>
+              ))}
+            </div>
+          )}
+          {legenda.turni.length > 0 && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-bordo pt-2.5">
+              <span className="min-w-20 font-medium">Turni</span>
+              {legenda.turni.map((turno) => (
+                <span key={turno.id} className="flex items-center gap-1.5 text-tenue">
+                  <span className="inline-block h-5 w-5 rounded border border-bordo bg-superficie text-center text-xs font-medium leading-5 text-testo">
+                    {turno.codice}
+                  </span>
+                  {turno.nome} {turno.oraInizio}–{turno.oraFine} ({(turno.durataMin / 60).toString().replace(".", ",")}h)
+                </span>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       <p className="no-stampa text-xs text-tenue">
         Le modifiche manuali sono persistenti. Rigenerare il piano sostituisce comunque l&apos;intero mese.
