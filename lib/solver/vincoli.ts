@@ -106,6 +106,20 @@ export interface VoceConteggioTurni {
   giorniMask: Uint8Array
 }
 
+export interface MotivoAssegnabilita {
+  codice: string
+  messaggio: string
+  rilassabile: boolean
+  vincoloId?: string
+  valore?: number
+  soglia?: number
+}
+
+export interface ValutazioneAssegnabilita {
+  consentita: boolean
+  motivi: MotivoAssegnabilita[]
+}
+
 interface ParamsVincolo {
   lavoratore?: string
   lavoratori?: string[]
@@ -434,6 +448,35 @@ export function puoAssegnare(
   slotIdx: number,
   lav: number,
 ): boolean {
+  return controllaAssegnabilita(m, s, c, slotIdx, lav)
+}
+
+/**
+ * Spiega perché una persona non può coprire uno slot.
+ *
+ * Usa gli stessi controlli del guardiano impiegato dal solver: la diagnostica
+ * non deve ricostruire le regole da testo libero né divergere dall'enforcement.
+ */
+export function valutaAssegnabilita(
+  m: Modello,
+  s: Stato,
+  c: VincoliCompilati,
+  slotIdx: number,
+  lav: number,
+): ValutazioneAssegnabilita {
+  const motivi: MotivoAssegnabilita[] = []
+  controllaAssegnabilita(m, s, c, slotIdx, lav, motivi)
+  return { consentita: motivi.length === 0, motivi }
+}
+
+function controllaAssegnabilita(
+  m: Modello,
+  s: Stato,
+  c: VincoliCompilati,
+  slotIdx: number,
+  lav: number,
+  motivi?: MotivoAssegnabilita[],
+): boolean {
   const sl = m.slots[slotIdx]
   const g = sl.giornoIdx
   const t = sl.turnoIdx
@@ -441,53 +484,134 @@ export function puoAssegnare(
   const nT = m.turni.length
   const base = lav * nG
 
+  const blocca = (motivo: MotivoAssegnabilita): boolean => {
+    if (motivi) motivi.push(motivo)
+    return motivi === undefined
+  }
+
   // 1. Un solo turno al giorno
-  if (s.turnoDelGiorno[base + g] !== -1) return false
+  if (s.turnoDelGiorno[base + g] !== -1) {
+    if (blocca({
+      codice: "turno_gia_assegnato",
+      messaggio: "Il lavoratore ha già un turno nello stesso giorno.",
+      rilassabile: false,
+    })) return false
+  }
 
   // 2. Assenze
-  if (m.assente[base + g]) return false
-  if (m.assenteSuTurno.has(`${lav}:${g}:${t}`)) return false
+  if (m.assente[base + g]) {
+    if (blocca({
+      codice: "assenza",
+      messaggio: `Il lavoratore è assente il ${sl.data}.`,
+      rilassabile: false,
+    })) return false
+  }
+  if (m.assenteSuTurno.has(`${lav}:${g}:${t}`)) {
+    if (blocca({
+      codice: "assenza_turno",
+      messaggio: `Il lavoratore è assente per il turno del ${sl.data}.`,
+      rilassabile: false,
+    })) return false
+  }
 
   // 3. Abilitazione alla postazione
-  if (!m.abilitato[lav * m.postazioni.length + sl.postazioneIdx]) return false
-  if (c.postVietata[lav * m.postazioni.length + sl.postazioneIdx]) return false
+  if (!m.abilitato[lav * m.postazioni.length + sl.postazioneIdx]) {
+    if (blocca({
+      codice: "abilitazione_mancante",
+      messaggio: "Il lavoratore non è abilitato alla postazione.",
+      rilassabile: false,
+    })) return false
+  }
+  if (c.postVietata[lav * m.postazioni.length + sl.postazioneIdx]) {
+    if (blocca({
+      codice: "postazione_vietata",
+      messaggio: "Un vincolo impedisce al lavoratore di usare la postazione.",
+      rilassabile: true,
+    })) return false
+  }
 
   // 4. Vincoli rigidi dal DSL
-  if (c.vietato[lav * nG * nT + g * nT + t]) return false
-
-  // 5. Riposo minimo rispetto al giorno precedente e al successivo
-  if (!riposoOk(m, s, lav, g, t)) return false
-
-  // 6. Giorni consecutivi
-  if (!giorniConsecutiviOk(m, s, lav, g)) return false
-
-  // 7. Tetti sul numero di turni (solo quelli rigidi)
-  for (const mt of c.maxTurni) {
-    if (mt.lav !== lav || mt.turno !== t || !mt.hard) continue
-    // Il tetto non si applica se questo giorno sta fuori dalla sua validità.
-    if (!mt.giorniMask[g]) continue
-    if (contaTurni(m, s, lav, t, mt.giorniMask) >= mt.n) return false
+  if (c.vietato[lav * nG * nT + g * nT + t]) {
+    if (blocca({
+      codice: "turno_vietato",
+      messaggio: "Un vincolo impedisce al lavoratore di svolgere questo turno.",
+      rilassabile: true,
+    })) return false
   }
 
-  // 8. Coppie da tenere separate
-  for (const sep of c.separati) {
-    if (!sep.hard) continue
-    const altro = sep.a === lav ? sep.b : sep.b === lav ? sep.a : -1
-    if (altro < 0) continue
-    if (s.turnoDelGiorno[altro * nG + g] === t) return false
+  // I controlli temporali presuppongono che il giorno sia ancora libero.
+  if (s.turnoDelGiorno[base + g] === -1) {
+    // 5. Riposo minimo rispetto al giorno precedente e al successivo
+    if (!riposoOk(m, s, lav, g, t)) {
+      if (blocca({
+        codice: "riposo_insufficiente",
+        messaggio: "Il riposo tra i turni sarebbe inferiore al minimo configurato.",
+        rilassabile: false,
+      })) return false
+    }
+
+    // 6. Giorni consecutivi
+    if (!giorniConsecutiviOk(m, s, lav, g)) {
+      if (blocca({
+        codice: "giorni_consecutivi",
+        messaggio: "Il turno supererebbe il massimo di giorni consecutivi.",
+        rilassabile: true,
+        valore: giorniConsecutivi(m, s, lav, g),
+        soglia: m.lavoratori[lav].maxGiorniConsecutivi,
+      })) return false
+    }
+
+    // 7. Tetti sul numero di turni (solo quelli rigidi)
+    for (const mt of c.maxTurni) {
+      if (mt.lav !== lav || mt.turno !== t || !mt.hard) continue
+      if (!mt.giorniMask[g]) continue
+      const valore = contaTurni(m, s, lav, t, mt.giorniMask)
+      if (valore >= mt.n) {
+        if (blocca({
+          codice: "max_turni",
+          messaggio: mt.desc,
+          rilassabile: true,
+          vincoloId: mt.id,
+          valore,
+          soglia: mt.n,
+        })) return false
+      }
+    }
+
+    // 8. Coppie da tenere separate
+    for (const sep of c.separati) {
+      if (!sep.hard) continue
+      const altro = sep.a === lav ? sep.b : sep.b === lav ? sep.a : -1
+      if (altro < 0) continue
+      if (s.turnoDelGiorno[altro * nG + g] === t) {
+        if (blocca({
+          codice: "separati",
+          messaggio: sep.desc,
+          rilassabile: true,
+        })) return false
+      }
+    }
+
+    // 9. Tetto globale delle ore nella settimana di calendario.
+    const turno = m.turni[t]
+    if (turno.contaNelleOre) {
+      const settimana = m.settimanaDi[g]
+      const oreDopo =
+        oreSettimana(m, s, lav, settimana) +
+        (turno.durataMin * turno.pesoOre) / MIN_IN_H
+      if (oreDopo > m.regole.maxOreSettimana + 1e-9) {
+        if (blocca({
+          codice: "max_ore_settimana",
+          messaggio: "Il turno supererebbe il tetto globale di ore settimanali.",
+          rilassabile: true,
+          valore: oreDopo,
+          soglia: m.regole.maxOreSettimana,
+        })) return false
+      }
+    }
   }
 
-  // 9. Tetto globale delle ore nella settimana di calendario.
-  const turno = m.turni[t]
-  if (turno.contaNelleOre) {
-    const settimana = m.settimanaDi[g]
-    const oreDopo =
-      oreSettimana(m, s, lav, settimana) +
-      (turno.durataMin * turno.pesoOre) / MIN_IN_H
-    if (oreDopo > m.regole.maxOreSettimana + 1e-9) return false
-  }
-
-  return true
+  return motivi === undefined || motivi.length === 0
 }
 
 /**
@@ -542,13 +666,17 @@ function riposoOk(m: Modello, s: Stato, lav: number, g: number, t: number): bool
 }
 
 /** Lavorare il giorno `g` non deve creare una serie più lunga del consentito. */
-function giorniConsecutiviOk(m: Modello, s: Stato, lav: number, g: number): boolean {
+function giorniConsecutivi(m: Modello, s: Stato, lav: number, g: number): number {
   const nG = m.nGiorni
   const base = lav * nG
   let serie = 1
   for (let i = g - 1; i >= 0 && s.turnoDelGiorno[base + i] !== -1; i--) serie++
   for (let i = g + 1; i < nG && s.turnoDelGiorno[base + i] !== -1; i++) serie++
-  return serie <= m.lavoratori[lav].maxGiorniConsecutivi
+  return serie
+}
+
+function giorniConsecutiviOk(m: Modello, s: Stato, lav: number, g: number): boolean {
+  return giorniConsecutivi(m, s, lav, g) <= m.lavoratori[lav].maxGiorniConsecutivi
 }
 
 /**

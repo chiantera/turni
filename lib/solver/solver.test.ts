@@ -4,7 +4,7 @@ import { costruisciModello, PESI_DEFAULT, REGOLE_DEFAULT } from "./modello"
 import { scenario } from "./scenari"
 import { verificaFattibilita } from "./fattibilita"
 import type { Vincolo } from "./tipi"
-import { compilaVincoli } from "./vincoli"
+import { compilaVincoli, creaStato, valutaAssegnabilita } from "./vincoli"
 
 const ORA = 3_600_000
 
@@ -790,5 +790,69 @@ describe("orizzonte di pianificazione personalizzato", () => {
 
     expect(cSenzaPeso.preferenza[0]).toBe(0)
     expect(cConPeso.preferenza[0]).toBe(-6)
+  })
+})
+
+describe("spiegazione dell'assegnabilità", () => {
+  it("riporta l'assenza come motivo strutturato", () => {
+    const dati = scenario({
+      assenze: [
+        {
+          worker_id: "l-0",
+          dal: "2026-08-01",
+          al: "2026-08-01",
+          giornata_intera: true,
+          shift_type_id: null,
+        },
+      ],
+    })
+    const modello = costruisciModello(dati)
+    const stato = creaStato(modello)
+    const vincoli = compilaVincoli(modello)
+    const slot = modello.slots.find((sl) => sl.data === "2026-08-01")
+    expect(slot).toBeDefined()
+
+    const valutazione = valutaAssegnabilita(
+      modello,
+      stato,
+      vincoli,
+      slot!.idx,
+      0,
+    )
+
+    expect(valutazione.consentita).toBe(false)
+    expect(valutazione.motivi).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ codice: "assenza", rilassabile: false }),
+      ]),
+    )
+  })
+
+  it("riporta il tetto ore e il relativo vincolo rilassabile", () => {
+    const dati = scenario()
+    dati.regole = { ...dati.regole, maxOreSettimana: 1 }
+    const modello = costruisciModello(dati)
+    const stato = creaStato(modello)
+    const vincoli = compilaVincoli(modello)
+    const slot = modello.slots[0]
+
+    const valutazione = valutaAssegnabilita(
+      modello,
+      stato,
+      vincoli,
+      slot.idx,
+      0,
+    )
+
+    expect(valutazione.consentita).toBe(false)
+    expect(valutazione.motivi).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          codice: "max_ore_settimana",
+          rilassabile: true,
+          soglia: 1,
+        }),
+      ]),
+    )
   })
 })
