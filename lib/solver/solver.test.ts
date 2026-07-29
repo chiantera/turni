@@ -267,6 +267,75 @@ describe("contabilità della fattibilità", () => {
   })
 })
 
+describe("copertura con validità datata", () => {
+  /** Divide ogni regola in due metà del mese, non sovrapposte. */
+  function coperturaDivisa(base: ReturnType<typeof scenario>) {
+    return base.copertura.flatMap((c) => [
+      { ...c, valido_dal: "2026-08-01", valido_al: "2026-08-15" },
+      { ...c, valido_dal: "2026-08-16", valido_al: "2026-08-31" },
+    ])
+  }
+
+  it("conserva le regole con intervalli di validità distinti", () => {
+    // Cambiare il fabbisogno a metà mese è la cosa più normale del mondo
+    // (agosto, festività, picchi stagionali). Le due righe hanno la stessa
+    // postazione, turno e giorno della settimana ma validità disgiunte:
+    // devono coesistere, non sovrascriversi.
+    const intero = costruisciModello(scenario())
+    const base = scenario()
+    const diviso = costruisciModello({ ...base, copertura: coperturaDivisa(base) })
+
+    expect(intero.slots.length).toBe(155)
+    expect(diviso.slots.length).toBe(intero.slots.length)
+
+    // E la copertura dev'essere continua: nessun giorno del mese senza slot.
+    const giorniCoperti = new Set(diviso.slots.map((s) => s.data))
+    expect(giorniCoperti.size).toBe(31)
+  })
+
+  it("rifiuta esplicitamente due regole sovrapposte per la stessa chiave", () => {
+    // Con due righe valide contemporaneamente non esiste una risposta giusta:
+    // sceglierne una in base all'ordine di inserimento significa che il piano
+    // cambia se cambia l'ordine delle righe nel database. Meglio fermarsi.
+    const base = scenario()
+    const sovrapposte = base.copertura.flatMap((c) => [
+      { ...c, valido_dal: "2026-08-01", valido_al: "2026-08-20" },
+      { ...c, valido_dal: "2026-08-10", valido_al: "2026-08-31", n_richiesti: 9 },
+    ])
+
+    expect(() =>
+      costruisciModello({ ...base, copertura: sovrapposte }),
+    ).toThrow(/sovrappo/i)
+  })
+
+  it("segnala il conflitto fra una regola perpetua e una datata", () => {
+    const base = scenario()
+    // copertura[0] vale per la domenica (giorno_settimana 0) senza date, cioè
+    // sempre. Il 9 agosto 2026 è una domenica: la regola datata qui sotto ci
+    // ricade sopra, quindi quel giorno due regole sono valide insieme.
+    const conUnaDatata = [
+      ...base.copertura,
+      {
+        ...base.copertura[0],
+        valido_dal: "2026-08-09",
+        valido_al: "2026-08-09",
+        n_richiesti: 4,
+      },
+    ]
+    expect(() =>
+      costruisciModello({ ...base, copertura: conUnaDatata }),
+    ).toThrow(/sovrappo/i)
+  })
+
+  it("una regola senza date copre tutto l'intervallo", () => {
+    // Il caso normale: nessuna data, la regola vale sempre. È il
+    // comportamento che tutte le configurazioni esistenti danno per scontato.
+    const m = costruisciModello(scenario())
+    expect(m.slots.length).toBe(155)
+    expect(new Set(m.slots.map((s) => s.data)).size).toBe(31)
+  })
+})
+
 describe("verifica del mix (2:2:1 contro 1:1:1)", () => {
   it("segnala lo sbilanciamento quando serve 1 persona per turno", () => {
     // Con copertura 1/1/1 il monte ore può tornare ma le notti sono troppe

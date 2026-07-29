@@ -115,6 +115,59 @@ export interface DatiIngresso {
   giorniContestoDopo?: number
 }
 
+const GIORNI = [
+  "domenica",
+  "lunedì",
+  "martedì",
+  "mercoledì",
+  "giovedì",
+  "venerdì",
+  "sabato",
+]
+
+/** Errore di configurazione: i dati non descrivono un fabbisogno univoco. */
+export class ErroreCoperturaAmbigua extends Error {
+  constructor(messaggio: string) {
+    super(messaggio)
+    this.name = "ErroreCoperturaAmbigua"
+  }
+}
+
+/**
+ * Sceglie la regola di copertura valida per una data.
+ *
+ * Se piu' regole sono valide contemporaneamente per la stessa chiave non
+ * esiste una risposta corretta: sceglierne una in base all'ordine di
+ * inserimento renderebbe il piano dipendente dall'ordine delle righe nel
+ * database, e la stessa configurazione produrrebbe risultati diversi a
+ * distanza di tempo. Meglio fermarsi e dire quale conflitto risolvere.
+ */
+export function regolaCoperturaPerData(
+  regole: RigaCopertura[] | undefined,
+  data: string,
+  descrizione: string,
+): RigaCopertura | null {
+  if (!regole || regole.length === 0) return null
+
+  const valide = regole.filter(
+    (r) =>
+      (!r.valido_dal || data >= r.valido_dal) &&
+      (!r.valido_al || data <= r.valido_al),
+  )
+
+  if (valide.length === 0) return null
+  if (valide.length === 1) return valide[0]
+
+  const intervalli = valide
+    .map((r) => `${r.valido_dal ?? "sempre"}..${r.valido_al ?? "sempre"} (${r.n_richiesti})`)
+    .join(", ")
+  throw new ErroreCoperturaAmbigua(
+    `Copertura ambigua per ${descrizione} il ${data}: ${valide.length} regole ` +
+      `si sovrappongono [${intervalli}]. Correggi gli intervalli di validità ` +
+      `perché per ogni data ne resti valida una sola.`,
+  )
+}
+
 export const PESI_DEFAULT: Pesi = {
   ore_target: 100,
   pattern_settimanale: 60,
@@ -256,13 +309,22 @@ export function costruisciModello(d: DatiIngresso): Modello {
   const nSettimane = ancore.size
 
   // --- Slot da coprire (solo nell'intervallo pianificato) ------------------
-  // Indicizzo la copertura per lookup O(1): festivo prima, poi giorno feriale.
-  const copFestiva = new Map<string, RigaCopertura>()
-  const copFeriale = new Map<string, RigaCopertura>()
+  // Ogni chiave punta a un ELENCO di regole, non a una sola: la stessa
+  // postazione/turno/giorno puo' avere fabbisogni diversi in periodi diversi
+  // (agosto, festivita', picchi stagionali). Tenerne una sola significherebbe
+  // far vincere l'ultima riga letta dal database, cioe' far dipendere il piano
+  // dall'ordine delle righe.
+  const copFestiva = new Map<string, RigaCopertura[]>()
+  const copFeriale = new Map<string, RigaCopertura[]>()
+  const accumula = (mappa: Map<string, RigaCopertura[]>, k: string, c: RigaCopertura) => {
+    const v = mappa.get(k)
+    if (v) v.push(c)
+    else mappa.set(k, [c])
+  }
   for (const c of d.copertura) {
     const k = `${c.position_id}:${c.shift_type_id}`
-    if (c.tipo_giorno === "festivo") copFestiva.set(k, c)
-    else copFeriale.set(`${k}:${c.giorno_settimana}`, c)
+    if (c.tipo_giorno === "festivo") accumula(copFestiva, k, c)
+    else accumula(copFeriale, `${k}:${c.giorno_settimana}`, c)
   }
 
   const slots: Slot[] = []
@@ -273,10 +335,21 @@ export function costruisciModello(d: DatiIngresso): Modello {
     for (let pi = 0; pi < nPost; pi++) {
       for (let ti = 0; ti < nTurni; ti++) {
         const k = `${postazioni[pi].id}:${turni[ti].id}`
-        const regola = (usaFestiva ? copFestiva.get(k) : undefined) ?? copFeriale.get(`${k}:${dow}`)
+        const descrizione = `${postazioni[pi].nome} / ${turni[ti].nome}`
+
+        // La regola festiva sostituisce quella del giorno, ma solo se ne
+        // esiste una valida per questa data.
+        const regola =
+          (usaFestiva
+            ? regolaCoperturaPerData(copFestiva.get(k), dt, `${descrizione} (festivo)`)
+            : null) ??
+          regolaCoperturaPerData(
+            copFeriale.get(`${k}:${dow}`),
+            dt,
+            `${descrizione} (${GIORNI[dow]})`,
+          )
+
         if (!regola) continue
-        if (regola.valido_dal && dt < regola.valido_dal) continue
-        if (regola.valido_al && dt > regola.valido_al) continue
         for (let n = 0; n < regola.n_richiesti; n++) {
           slots.push({
             idx: slots.length,

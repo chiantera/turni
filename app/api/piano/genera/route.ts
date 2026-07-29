@@ -5,6 +5,7 @@ import {
   intervalloDaParametri,
 } from "@/lib/dati/intervallo"
 import { caricaDatiSolver, salvaIntervalloPiani } from "@/lib/dati/piano"
+import { ErroreCoperturaAmbigua } from "@/lib/solver/modello"
 import { estraiAssegnazioni, generaPiano } from "@/lib/solver"
 import { ePianificatore } from "@/lib/supabase/server"
 
@@ -86,6 +87,9 @@ export async function POST(req: Request) {
     })
   } catch (e) {
     const messaggio = e instanceof Error ? e.message : "Errore imprevisto."
-    return NextResponse.json({ errore: messaggio }, { status: 500 })
+    // Una copertura ambigua è un errore di configurazione, non un guasto del
+    // server: chi legge deve capire che va corretta la griglia, non riprovare.
+    const stato = e instanceof ErroreCoperturaAmbigua ? 400 : 500
+    return NextResponse.json({ errore: messaggio }, { status: stato })
   }
 }
