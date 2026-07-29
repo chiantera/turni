@@ -329,6 +329,46 @@ describe("nessun vincolo accettato viene ignorato in silenzio", () => {
   )
 })
 
+describe("ambito temporale dei vincoli sul numero di turni", () => {
+  it("max_turni vale solo nel periodo di validità dichiarato", () => {
+    // «Niente notti nella prima decina di agosto» non significa «niente notti
+    // ad agosto». Ignorare le date di validità trasforma una limitazione
+    // temporanea in una permanente, e sottrae al piano notti che erano
+    // disponibili.
+    const v: Vincolo = {
+      id: "v-max-datato",
+      kind: "max_turni",
+      isHard: true,
+      peso: 100,
+      descrizione: "Lav1 senza notti fino al 10 agosto",
+      validoDal: "2026-08-01",
+      validoAl: "2026-08-10",
+      params: { lavoratore: "l-0", turni: ["N"], n: 0 },
+    }
+
+    const esito = generaPiano(scenario({ nLavoratori: 9, vincoli: [v] }), {
+      seme: 3,
+      tempoMaxMs: 4000,
+    })
+    const { modello: m, stato: s } = esito
+    const idxN = m.turni.findIndex((t) => t.isNotte)
+
+    let dentro = 0
+    let fuori = 0
+    for (let g = m.offsetPeriodo; g < m.fineOffsetPeriodo; g++) {
+      if (s.turnoDelGiorno[0 * m.nGiorni + g] !== idxN) continue
+      if (m.date[g] <= "2026-08-10") dentro++
+      else fuori++
+    }
+
+    expect(esito.vincoliApplicati).toContain("v-max-datato")
+    expect(dentro).toBe(0)
+    // Fuori dalla finestra il vincolo non deve mordere: il lavoratore resta
+    // disponibile per le notti come chiunque altro.
+    expect(fuori).toBeGreaterThan(0)
+  })
+})
+
 describe("copertura con validità datata", () => {
   /** Divide ogni regola in due metà del mese, non sovrapposte. */
   function coperturaDivisa(base: ReturnType<typeof scenario>) {

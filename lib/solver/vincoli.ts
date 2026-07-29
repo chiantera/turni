@@ -35,9 +35,15 @@ export interface VincoliCompilati {
   preferenza: Float32Array
   /** postVietata[lav*nPost + p] = 1 */
   postVietata: Uint8Array
-  /** Tetti sul numero di turni di un tipo, nel mese. */
-  maxTurni: { lav: number; turno: number; n: number; hard: boolean; peso: number; desc: string }[]
-  minTurni: { lav: number; turno: number; n: number; hard: boolean; peso: number; desc: string }[]
+  /**
+   * Tetti sul numero di turni di un tipo.
+   *
+   * `giorniMask` delimita i giorni in cui il tetto vale: senza di essa una
+   * limitazione dichiarata per una settimana verrebbe applicata all'intero
+   * periodo, trasformando una restrizione temporanea in permanente.
+   */
+  maxTurni: VoceConteggioTurni[]
+  minTurni: VoceConteggioTurni[]
   /** Coppie che non devono coincidere nello stesso turno/giorno. */
   separati: { a: number; b: number; hard: boolean; peso: number; desc: string }[]
   /** Coppie che devono stare insieme. */
@@ -76,6 +82,18 @@ export const KIND_NON_SUPPORTATI: Record<string, string> = {
     "modifica il numero di slot e va applicato alla costruzione del modello",
   assegnazione_fissa:
     "fissa una persona su uno slot e va applicato alla costruzione del modello",
+}
+
+export interface VoceConteggioTurni {
+  id: string
+  lav: number
+  turno: number
+  n: number
+  hard: boolean
+  peso: number
+  desc: string
+  /** giorniMask[giornoIdx] = 1 se il vincolo vale quel giorno. */
+  giorniMask: Uint8Array
 }
 
 interface ParamsVincolo {
@@ -246,14 +264,22 @@ export function compilaVincoli(m: Modello): VincoliCompilati {
           scarta("nessuno dei turni indicati esiste")
           break
         }
+        if (giorniValidi.length === 0) {
+          scarta("il periodo di validità non tocca l'intervallo pianificato")
+          break
+        }
+        const giorniMask = new Uint8Array(nG)
+        for (const g of giorniValidi) giorniMask[g] = 1
         for (const t of turni) {
-          const voce = {
+          const voce: VoceConteggioTurni = {
+            id: v.id,
             lav,
             turno: t,
             n: p.n,
             hard: v.isHard,
             peso: v.peso,
             desc: v.descrizione,
+            giorniMask,
           }
           if (v.kind === "max_turni") c.maxTurni.push(voce)
           else c.minTurni.push(voce)
@@ -423,7 +449,9 @@ export function puoAssegnare(
   // 7. Tetti sul numero di turni (solo quelli rigidi)
   for (const mt of c.maxTurni) {
     if (mt.lav !== lav || mt.turno !== t || !mt.hard) continue
-    if (contaTurni(m, s, lav, t) >= mt.n) return false
+    // Il tetto non si applica se questo giorno sta fuori dalla sua validità.
+    if (!mt.giorniMask[g]) continue
+    if (contaTurni(m, s, lav, t, mt.giorniMask) >= mt.n) return false
   }
 
   // 8. Coppie da tenere separate
@@ -498,10 +526,22 @@ function giorniConsecutiviOk(m: Modello, s: Stato, lav: number, g: number): bool
   return serie <= m.lavoratori[lav].maxGiorniConsecutivi
 }
 
-function contaTurni(m: Modello, s: Stato, lav: number, turno: number): number {
+/**
+ * Conta i turni di un tipo assegnati al lavoratore, limitatamente ai giorni
+ * in cui il vincolo vale. Senza la maschera una limitazione dichiarata per
+ * pochi giorni verrebbe misurata sull'intero periodo.
+ */
+function contaTurni(
+  m: Modello,
+  s: Stato,
+  lav: number,
+  turno: number,
+  giorniMask?: Uint8Array,
+): number {
   let n = 0
   const base = lav * m.nGiorni
   for (let g = m.offsetPeriodo; g < m.fineOffsetPeriodo; g++) {
+    if (giorniMask && !giorniMask[g]) continue
     if (s.turnoDelGiorno[base + g] === turno) n++
   }
   return n
@@ -624,12 +664,12 @@ export function costoLavoratore(
   // --- Tetti morbidi sul numero di turni ----------------------------------
   for (const mt of c.maxTurni) {
     if (mt.lav !== lav || mt.hard) continue
-    const n = contaTurni(m, s, lav, mt.turno)
+    const n = contaTurni(m, s, lav, mt.turno, mt.giorniMask)
     if (n > mt.n) costo += (n - mt.n) * mt.peso
   }
   for (const mn of c.minTurni) {
     if (mn.lav !== lav) continue
-    const n = contaTurni(m, s, lav, mn.turno)
+    const n = contaTurni(m, s, lav, mn.turno, mn.giorniMask)
     if (n < mn.n) costo += (mn.n - n) * mn.peso * (mn.hard ? 10 : 1)
   }
 
