@@ -8,6 +8,12 @@ export interface AzioneIntestazionePiano {
   href: string
 }
 
+export function deveConfermareNavigazioneContestuale(
+  numeroModifiche: number,
+): boolean {
+  return numeroModifiche > 0
+}
+
 export function azioniIntestazioneLavoratore(
   workerId: string,
 ): AzioneIntestazionePiano[] {

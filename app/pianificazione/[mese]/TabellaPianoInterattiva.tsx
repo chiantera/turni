@@ -15,6 +15,7 @@ import { GIORNI_BREVI, ore } from "@/lib/dati/formato"
 import {
   azioniIntestazioneLavoratore,
   azioniIntestazionePostazione,
+  deveConfermareNavigazioneContestuale,
 } from "@/lib/dati/navigazione"
 import {
   aggiornaCellaLavoratore,
@@ -698,6 +699,7 @@ export default function TabellaPianoInterattiva({
           <aside
             ref={dialogDettaglioRef}
             role="dialog"
+            aria-modal="true"
             aria-label={`Collegamenti per ${titoloDettaglio}`}
             className="fixed z-40 max-h-[calc(100vh-1rem)] w-[calc(100vw-1rem)] max-w-72 overflow-y-auto rounded-xl border border-bordo bg-superficie shadow-2xl"
             style={{ top: dettaglioRiga.top, left: dettaglioRiga.left }}
@@ -718,7 +720,7 @@ export default function TabellaPianoInterattiva({
             </div>
             {modifiche.length > 0 && (
               <p className="border-b border-bordo bg-avviso-tenue px-4 py-2 text-xs text-avviso">
-                Hai modifiche non salvate: salvale prima di cambiare pagina.
+                Hai modifiche non salvate: ti verrà chiesta conferma prima di cambiare pagina.
               </p>
             )}
             <nav aria-label="Collegamenti contestuali" className="p-2">
@@ -726,7 +728,18 @@ export default function TabellaPianoInterattiva({
                 <Link
                   key={azione.href}
                   href={azione.href}
-                  onClick={() => chiudiDettaglio(false)}
+                  onClick={(evento) => {
+                    if (
+                      deveConfermareNavigazioneContestuale(modifiche.length) &&
+                      !window.confirm(
+                        "Hai modifiche non salvate. Vuoi lasciare questa pagina e scartarle?",
+                      )
+                    ) {
+                      evento.preventDefault()
+                      return
+                    }
+                    chiudiDettaglio(false)
+                  }}
                   className="flex min-h-10 items-center justify-between rounded-lg px-3 py-2 text-sm font-medium hover:bg-accento-tenue focus:outline-none focus:ring-2 focus:ring-accento"
                 >
                   {azione.etichetta}

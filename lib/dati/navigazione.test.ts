@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   azioniIntestazioneLavoratore,
   azioniIntestazionePostazione,
+  deveConfermareNavigazioneContestuale,
   destinazioneDopoAccesso,
   vociNavigazione,
 } from "./navigazione"
@@ -39,6 +40,12 @@ describe("destinazione dopo l'accesso", () => {
 })
 
 describe("azioni delle intestazioni del piano", () => {
+  it("richiede conferma prima di lasciare un piano con modifiche non salvate", () => {
+    expect(deveConfermareNavigazioneContestuale(0)).toBe(false)
+    expect(deveConfermareNavigazioneContestuale(1)).toBe(true)
+    expect(deveConfermareNavigazioneContestuale(3)).toBe(true)
+  })
+
   it("collega un lavoratore ai suoi dati e al riepilogo", () => {
     expect(azioniIntestazioneLavoratore("worker-1")).toEqual([
       { etichetta: "Dati lavoratore", href: "/lavoratori#lavoratore-worker-1" },
