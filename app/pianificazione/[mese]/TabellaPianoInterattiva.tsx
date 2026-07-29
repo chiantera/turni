@@ -1,0 +1,520 @@
+"use client"
+
+import { useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
+
+import { GIORNI_BREVI, ore } from "@/lib/dati/formato"
+import {
+  aggiornaCellaLavoratore,
+  aggiornaCellaPostazione,
+  calcolaModifiche,
+  type AssegnazioneModificabile,
+} from "@/lib/dati/modifiche-piano"
+import { giornoSettimana } from "@/lib/solver/tempo"
+import type { Tables } from "@/lib/supabase/types"
+
+interface Props {
+  mese: string
+  vista: "lavoratore" | "postazione"
+  giorni: string[]
+  festivi: string[]
+  lavoratori: Tables<"workers">[]
+  turni: Tables<"shift_types">[]
+  postazioni: Tables<"positions">[]
+  abilitazioni: Tables<"worker_positions">[]
+  assegnazioni: Tables<"assignments">[]
+}
+
+type Editor =
+  | { tipo: "lavoratore"; workerId: string; data: string }
+  | {
+      tipo: "postazione"
+      positionId: string
+      shiftTypeId: string
+      data: string
+    }
+
+function chiave(workerId: string, data: string) {
+  return `${workerId}:${data}`
+}
+
+export default function TabellaPianoInterattiva({
+  mese,
+  vista,
+  giorni,
+  festivi,
+  lavoratori,
+  turni,
+  postazioni,
+  abilitazioni,
+  assegnazioni,
+}: Props) {
+  const router = useRouter()
+  const inizialiDaServer = useMemo<AssegnazioneModificabile[]>(
+    () =>
+      assegnazioni.map((a) => ({
+        workerId: a.worker_id,
+        data: a.data,
+        shiftTypeId: a.shift_type_id,
+        positionId: a.position_id,
+      })),
+    [assegnazioni],
+  )
+  const [iniziali, setIniziali] = useState(inizialiDaServer)
+  const [correnti, setCorrenti] = useState(inizialiDaServer)
+  const [editor, setEditor] = useState<Editor | null>(null)
+  const [turnoScelto, setTurnoScelto] = useState("")
+  const [postazioneScelta, setPostazioneScelta] = useState("")
+  const [lavoratoriScelti, setLavoratoriScelti] = useState<Set<string>>(new Set())
+  const [inSalvataggio, setInSalvataggio] = useState(false)
+  const [errore, setErrore] = useState<string | null>(null)
+  const [esito, setEsito] = useState<string | null>(null)
+
+  const modifiche = useMemo(() => calcolaModifiche(iniziali, correnti), [iniziali, correnti])
+  const perLavoratoreGiorno = useMemo(
+    () => new Map(correnti.map((a) => [chiave(a.workerId, a.data), a])),
+    [correnti],
+  )
+  const inizialePerLavoratoreGiorno = useMemo(
+    () => new Map(iniziali.map((a) => [chiave(a.workerId, a.data), a])),
+    [iniziali],
+  )
+  const perPostTurnoGiorno = useMemo(() => {
+    const m = new Map<string, string[]>()
+    for (const a of correnti) {
+      if (!a.positionId || !a.shiftTypeId) continue
+      const k = `${a.positionId}:${a.shiftTypeId}:${a.data}`
+      const ids = m.get(k) ?? []
+      ids.push(a.workerId)
+      m.set(k, ids)
+    }
+    return m
+  }, [correnti])
+  const festiviSet = useMemo(() => new Set(festivi), [festivi])
+  const turnoPerId = useMemo(() => new Map(turni.map((t) => [t.id, t])), [turni])
+  const postazionePerId = useMemo(
+    () => new Map(postazioni.map((p) => [p.id, p])),
+    [postazioni],
+  )
+  const lavoratorePerId = useMemo(
+    () => new Map(lavoratori.map((l) => [l.id, l])),
+    [lavoratori],
+  )
+  const postazioniPerLavoratore = useMemo(() => {
+    const m = new Map<string, Set<string>>()
+    for (const a of abilitazioni) {
+      const ids = m.get(a.worker_id) ?? new Set<string>()
+      ids.add(a.position_id)
+      m.set(a.worker_id, ids)
+    }
+    return m
+  }, [abilitazioni])
+
+  function apriLavoratore(workerId: string, data: string) {
+    const corrente = perLavoratoreGiorno.get(chiave(workerId, data))
+    setTurnoScelto(corrente?.shiftTypeId ?? "")
+    setPostazioneScelta(corrente?.positionId ?? "")
+    setEditor({ tipo: "lavoratore", workerId, data })
+  }
+
+  function apriPostazione(positionId: string, shiftTypeId: string, data: string) {
+    const ids = perPostTurnoGiorno.get(`${positionId}:${shiftTypeId}:${data}`) ?? []
+    setLavoratoriScelti(new Set(ids))
+    setEditor({ tipo: "postazione", positionId, shiftTypeId, data })
+  }
+
+  function applicaEditorLavoratore() {
+    if (!editor || editor.tipo !== "lavoratore") return
+    if (!turnoScelto || !postazioneScelta) return
+    setCorrenti((precedenti) =>
+      aggiornaCellaLavoratore(precedenti, editor.workerId, editor.data, {
+        shiftTypeId: turnoScelto,
+        positionId: postazioneScelta,
+      }),
+    )
+    chiudiEditor()
+  }
+
+  function impostaRiposo() {
+    if (!editor || editor.tipo !== "lavoratore") return
+    setCorrenti((precedenti) =>
+      aggiornaCellaLavoratore(precedenti, editor.workerId, editor.data, null),
+    )
+    chiudiEditor()
+  }
+
+  function applicaEditorPostazione() {
+    if (!editor || editor.tipo !== "postazione") return
+    setCorrenti((precedenti) =>
+      aggiornaCellaPostazione(
+        precedenti,
+        {
+          data: editor.data,
+          shiftTypeId: editor.shiftTypeId,
+          positionId: editor.positionId,
+        },
+        [...lavoratoriScelti],
+      ),
+    )
+    chiudiEditor()
+  }
+
+  function chiudiEditor() {
+    setEditor(null)
+    setErrore(null)
+    setEsito(null)
+  }
+
+  async function salva() {
+    if (modifiche.length === 0) return
+    setInSalvataggio(true)
+    setErrore(null)
+    setEsito(null)
+    try {
+      const risposta = await fetch("/api/piano/assegnazioni", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mese, modifiche }),
+      })
+      const dati = await risposta.json()
+      if (!risposta.ok) throw new Error(dati.errore ?? "Salvataggio non riuscito.")
+      setIniziali(correnti)
+      setEsito(`${dati.salvate} ${dati.salvate === 1 ? "modifica salvata" : "modifiche salvate"}.`)
+      router.refresh()
+    } catch (e) {
+      setErrore(e instanceof Error ? e.message : "Errore imprevisto.")
+    } finally {
+      setInSalvataggio(false)
+    }
+  }
+
+  function annulla() {
+    setCorrenti(iniziali)
+    setEditor(null)
+    setErrore(null)
+    setEsito(null)
+  }
+
+  const intestazioneGiorni = giorni.map((g) => {
+    const dow = giornoSettimana(g)
+    const speciale = dow === 0 || dow === 6 || festiviSet.has(g)
+    return (
+      <th
+        key={g}
+        className={`px-1 py-1 border-b border-bordo text-center font-normal min-w-9 ${speciale ? "bg-avviso-tenue" : ""}`}
+        title={festiviSet.has(g) ? "Festivo" : undefined}
+      >
+        <div className="text-[10px] text-tenue">{GIORNI_BREVI[dow]}</div>
+        <div className="tabular-nums">{Number(g.slice(8, 10))}</div>
+      </th>
+    )
+  })
+
+  return (
+    <div className="space-y-3">
+      <div className="no-stampa flex flex-wrap items-center gap-3 rounded-lg border border-bordo bg-superficie px-3 py-2">
+        <p className="text-sm text-tenue">
+          Clicca una cella per modificarla
+          {vista === "postazione" ? " e scegliere i lavoratori assegnati" : ""}.
+        </p>
+        <div className="ml-auto flex items-center gap-2">
+          {modifiche.length > 0 && (
+            <span className="text-xs font-medium text-avviso">
+              {modifiche.length} {modifiche.length === 1 ? "modifica" : "modifiche"} non salvate
+            </span>
+          )}
+          <button
+            type="button"
+            className="bottone py-1.5"
+            disabled={inSalvataggio || modifiche.length === 0}
+            onClick={annulla}
+          >
+            Annulla
+          </button>
+          <button
+            type="button"
+            className="bottone bottone-primario py-1.5"
+            disabled={inSalvataggio || modifiche.length === 0}
+            onClick={salva}
+          >
+            {inSalvataggio ? "Salvo…" : "Salva modifiche"}
+          </button>
+        </div>
+      </div>
+
+      {errore && <div className="scheda p-3 bg-allarme-tenue text-allarme text-sm">{errore}</div>}
+      {esito && <div className="scheda p-3 text-accento text-sm">{esito}</div>}
+
+      <section className="scheda overflow-x-auto">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr>
+              <th className="sticky left-0 z-20 bg-superficie text-left font-medium px-3 py-2 border-b border-r border-bordo min-w-44">
+                {vista === "lavoratore" ? "Lavoratore" : "Postazione / turno"}
+              </th>
+              {intestazioneGiorni}
+              {vista === "lavoratore" && (
+                <>
+                  <th className="px-2 py-2 border-b border-l border-bordo text-right font-medium">Ore</th>
+                  <th className="px-2 py-2 border-b border-bordo text-right font-medium">Notti</th>
+                </>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {vista === "lavoratore"
+              ? lavoratori.map((l) => {
+                  const assegnazioniLav = correnti.filter((a) => a.workerId === l.id)
+                  const oreTotali = assegnazioniLav.reduce((totale, a) => {
+                    const t = a.shiftTypeId ? turnoPerId.get(a.shiftTypeId) : null
+                    return totale + (t?.conta_nelle_ore ? (t.durata_min * Number(t.peso_ore)) / 60 : 0)
+                  }, 0)
+                  const notti = assegnazioniLav.filter(
+                    (a) => a.shiftTypeId && turnoPerId.get(a.shiftTypeId)?.is_notte,
+                  ).length
+                  const target = (Number(l.ore_settimanali) * giorni.length) / 7
+                  return (
+                    <tr key={l.id} className="hover:bg-accento-tenue/40">
+                      <td className="sticky left-0 z-10 bg-superficie px-3 py-1.5 border-b border-r border-bordo whitespace-nowrap">
+                        {l.cognome} {l.nome}
+                      </td>
+                      {giorni.map((g) => {
+                        const k = chiave(l.id, g)
+                        const a = perLavoratoreGiorno.get(k)
+                        const iniziale = inizialePerLavoratoreGiorno.get(k)
+                        const t = a?.shiftTypeId ? turnoPerId.get(a.shiftTypeId) : null
+                        const p = a?.positionId ? postazionePerId.get(a.positionId) : null
+                        const cambiata =
+                          a?.shiftTypeId !== iniziale?.shiftTypeId ||
+                          a?.positionId !== iniziale?.positionId
+                        const dow = giornoSettimana(g)
+                        const speciale = dow === 0 || dow === 6 || festiviSet.has(g)
+                        return (
+                          <td
+                            key={g}
+                            className={`relative border-b border-bordo text-center p-0.5 ${speciale && !t ? "bg-avviso-tenue/40" : ""}`}
+                          >
+                            <button
+                              type="button"
+                              disabled={inSalvataggio}
+                              onClick={() => apriLavoratore(l.id, g)}
+                              className="group relative grid h-7 w-full min-w-8 place-items-center rounded hover:bg-accento-tenue focus:outline-none focus:ring-2 focus:ring-accento"
+                              title={t ? `${t.nome} · ${p?.nome ?? ""} · clicca per modificare` : "Riposo · clicca per assegnare"}
+                            >
+                              {t ? (
+                                <span
+                                  className="inline-block h-6 w-6 rounded text-xs font-medium leading-6 text-white shadow-sm transition-transform group-hover:scale-110"
+                                  style={{ backgroundColor: t.colore }}
+                                >
+                                  {t.codice}
+                                </span>
+                              ) : (
+                                <span className="text-bordo transition-colors group-hover:text-accento">·</span>
+                              )}
+                              {cambiata && (
+                                <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-avviso" />
+                              )}
+                            </button>
+                          </td>
+                        )
+                      })}
+                      <td
+                        className={`px-2 border-b border-l border-bordo text-right tabular-nums ${Math.abs(oreTotali - target) > 8 ? "text-avviso font-medium" : ""}`}
+                        title={`Obiettivo ${ore(target)}`}
+                      >
+                        {ore(oreTotali)}
+                      </td>
+                      <td className="px-2 border-b border-bordo text-right tabular-nums">{notti}</td>
+                    </tr>
+                  )
+                })
+              : postazioni.flatMap((p) =>
+                  turni.map((t) => (
+                    <tr key={`${p.id}:${t.id}`} className="hover:bg-accento-tenue/40">
+                      <td className="sticky left-0 z-10 bg-superficie px-3 py-1.5 border-b border-r border-bordo whitespace-nowrap">
+                        <span
+                          className="inline-block w-2 h-2 rounded-full mr-2 align-middle"
+                          style={{ backgroundColor: p.colore }}
+                        />
+                        {p.nome}
+                        <span className="text-tenue"> · {t.nome}</span>
+                      </td>
+                      {giorni.map((g) => {
+                        const ids = perPostTurnoGiorno.get(`${p.id}:${t.id}:${g}`) ?? []
+                        const dow = giornoSettimana(g)
+                        const speciale = dow === 0 || dow === 6 || festiviSet.has(g)
+                        const modificata = modifiche.some(
+                          (m) =>
+                            m.data === g &&
+                            (m.positionId === p.id ||
+                              inizialePerLavoratoreGiorno.get(chiave(m.workerId, g))?.positionId === p.id),
+                        )
+                        return (
+                          <td
+                            key={g}
+                            className={`relative border-b border-bordo text-center text-[10px] leading-tight p-0.5 ${speciale ? "bg-avviso-tenue/40" : ""}`}
+                          >
+                            <button
+                              type="button"
+                              disabled={inSalvataggio}
+                              onClick={() => apriPostazione(p.id, t.id, g)}
+                              className="group relative min-h-7 w-full min-w-12 rounded px-1 py-0.5 hover:bg-accento-tenue focus:outline-none focus:ring-2 focus:ring-accento"
+                              title="Clicca per modificare i lavoratori assegnati"
+                            >
+                              {ids.length === 0 ? (
+                                <span className="font-bold text-allarme group-hover:text-accento">—</span>
+                              ) : (
+                                ids.map((id) => (
+                                  <div key={id} className="max-w-16 truncate">
+                                    {lavoratorePerId.get(id)?.cognome ?? "?"}
+                                  </div>
+                                ))
+                              )}
+                              {modificata && (
+                                <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-avviso" />
+                              )}
+                            </button>
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  )),
+                )}
+          </tbody>
+        </table>
+      </section>
+
+      <p className="no-stampa text-xs text-tenue">
+        Le modifiche manuali sono persistenti. Rigenerare il piano sostituisce comunque l&apos;intero mese.
+      </p>
+
+      {editor && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/35 p-4"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.currentTarget === e.target) chiudiEditor()
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titolo-editor-turno"
+            className="scheda w-full max-w-md overflow-hidden shadow-2xl"
+          >
+            <div className="flex items-start justify-between border-b border-bordo p-4">
+              <div>
+                <h2 id="titolo-editor-turno" className="font-semibold">
+                  {editor.tipo === "lavoratore" ? "Modifica turno" : "Modifica copertura"}
+                </h2>
+                <p className="mt-1 text-sm text-tenue">
+                  {editor.tipo === "lavoratore"
+                    ? `${lavoratorePerId.get(editor.workerId)?.nome ?? ""} ${lavoratorePerId.get(editor.workerId)?.cognome ?? ""} · ${editor.data}`
+                    : `${postazionePerId.get(editor.positionId)?.nome ?? ""} · ${turnoPerId.get(editor.shiftTypeId)?.nome ?? ""} · ${editor.data}`}
+                </p>
+              </div>
+              <button type="button" className="bottone px-2 py-1" onClick={chiudiEditor} aria-label="Chiudi">
+                ×
+              </button>
+            </div>
+
+            {editor.tipo === "lavoratore" ? (
+              <div className="space-y-4 p-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="text-sm font-medium">
+                    Turno
+                    <select
+                      className="campo mt-1"
+                      value={turnoScelto}
+                      onChange={(e) => setTurnoScelto(e.target.value)}
+                    >
+                      <option value="">Scegli…</option>
+                      {turni.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.codice} · {t.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="text-sm font-medium">
+                    Postazione
+                    <select
+                      className="campo mt-1"
+                      value={postazioneScelta}
+                      onChange={(e) => setPostazioneScelta(e.target.value)}
+                    >
+                      <option value="">Scegli…</option>
+                      {postazioni
+                        .filter((p) => postazioniPerLavoratore.get(editor.workerId)?.has(p.id))
+                        .map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.nome}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                </div>
+                <div className="flex items-center gap-2 border-t border-bordo pt-4">
+                  <button type="button" className="bottone text-allarme" onClick={impostaRiposo}>
+                    Imposta riposo
+                  </button>
+                  <button type="button" className="bottone ml-auto" onClick={chiudiEditor}>
+                    Annulla
+                  </button>
+                  <button
+                    type="button"
+                    className="bottone bottone-primario"
+                    disabled={!turnoScelto || !postazioneScelta}
+                    onClick={applicaEditorLavoratore}
+                  >
+                    Applica
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="p-4">
+                <p className="mb-3 text-sm text-tenue">
+                  Selezionare un lavoratore già impegnato nello stesso giorno lo sposta in questa cella.
+                </p>
+                <div className="max-h-80 space-y-1 overflow-y-auto rounded-lg border border-bordo p-2">
+                  {lavoratori
+                    .filter((l) => postazioniPerLavoratore.get(l.id)?.has(editor.positionId))
+                    .map((l) => (
+                      <label
+                        key={l.id}
+                        className="flex cursor-pointer items-center gap-3 rounded px-2 py-2 text-sm hover:bg-accento-tenue"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={lavoratoriScelti.has(l.id)}
+                          onChange={(e) => {
+                            const prossimi = new Set(lavoratoriScelti)
+                            if (e.target.checked) prossimi.add(l.id)
+                            else prossimi.delete(l.id)
+                            setLavoratoriScelti(prossimi)
+                          }}
+                        />
+                        <span>{l.cognome} {l.nome}</span>
+                        {perLavoratoreGiorno.get(chiave(l.id, editor.data)) &&
+                          !lavoratoriScelti.has(l.id) && (
+                            <span className="ml-auto text-xs text-avviso">già assegnato</span>
+                          )}
+                      </label>
+                    ))}
+                </div>
+                <div className="mt-4 flex justify-end gap-2 border-t border-bordo pt-4">
+                  <button type="button" className="bottone" onClick={chiudiEditor}>
+                    Annulla
+                  </button>
+                  <button type="button" className="bottone bottone-primario" onClick={applicaEditorPostazione}>
+                    Applica
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+    </div>
+  )
+}

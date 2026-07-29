@@ -2,6 +2,7 @@ import Link from "next/link"
 
 import Navigazione from "@/app/componenti/Navigazione"
 import BarraAzioni from "./BarraAzioni"
+import TabellaPianoInterattiva from "./TabellaPianoInterattiva"
 import {
   GIORNI_BREVI,
   nomeMese,
@@ -37,6 +38,7 @@ export default async function Pianificazione({
   const { vista: vistaGrezza } = await searchParams
   const mese = primoDelMese(meseGrezzo)
   const vista = vistaGrezza === "postazione" ? "postazione" : "lavoratore"
+  const tabellaEditabile = new Set(["lavoratore", "postazione"]).has(vista)
 
   const sb = await creaClientServer()
   const nGiorni = giorniNelMese(mese)
@@ -46,12 +48,13 @@ export default async function Pianificazione({
   )
   const fine = giorni[giorni.length - 1]
 
-  const [piano, lavoratori, postazioni, turni, festivita] = await Promise.all([
+  const [piano, lavoratori, postazioni, turni, festivita, abilitazioni] = await Promise.all([
     sb.from("schedules").select("*").eq("mese", mese).maybeSingle(),
     sb.from("workers").select("*").eq("attivo", true).order("cognome"),
     sb.from("positions").select("*").eq("attiva", true).order("ordine"),
     sb.from("shift_types").select("*").eq("attivo", true).order("ordine_rotazione"),
     sb.from("holidays").select("*").gte("data", mese).lte("data", fine),
+    sb.from("worker_positions").select("*"),
   ])
 
   const risultati = piano.data
@@ -84,7 +87,6 @@ export default async function Pianificazione({
     perPostTurnoGiorno.set(k, v)
   }
 
-  // Ore per lavoratore, dalle assegnazioni salvate
   const oreLav = new Map<string, number>()
   const nottiLav = new Map<string, number>()
   for (const a of assegnazioni) {
@@ -98,6 +100,7 @@ export default async function Pianificazione({
     }
     if (t.is_notte) nottiLav.set(a.worker_id, (nottiLav.get(a.worker_id) ?? 0) + 1)
   }
+
 
   const bloccanti = violazioni.filter((v) => v.gravita === "bloccante")
   const altre = violazioni.filter((v) => v.gravita !== "bloccante")
@@ -188,10 +191,22 @@ export default async function Pianificazione({
         </div>
 
         {/* --- Griglia --- */}
-        {assegnazioni.length === 0 ? (
+        {!piano.data ? (
           <div className="scheda p-8 text-center text-tenue">
             Nessun turno da mostrare. Usa <strong>Genera il piano</strong> qui sopra.
           </div>
+        ) : tabellaEditabile ? (
+          <TabellaPianoInterattiva
+            mese={mese}
+            vista={vista}
+            giorni={giorni}
+            festivi={[...festiviSet]}
+            lavoratori={lavoratori.data ?? []}
+            turni={turni.data ?? []}
+            postazioni={postazioni.data ?? []}
+            abilitazioni={abilitazioni.data ?? []}
+            assegnazioni={assegnazioni}
+          />
         ) : (
           <section className="scheda overflow-x-auto">
             <table className="w-full text-sm border-collapse">
