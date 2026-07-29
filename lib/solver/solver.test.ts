@@ -856,3 +856,41 @@ describe("spiegazione dell'assegnabilità", () => {
     )
   })
 })
+
+describe("classificazione diagnostica", () => {
+  it("classifica la capacità eccedente senza creare falsi problemi di ore", () => {
+    const esito = generaPiano(scenario({ nLavoratori: 9 }), {
+      seme: 1,
+      tempoMaxMs: 0,
+    })
+
+    expect(esito.slotScoperti).toBe(0)
+    expect(
+      esito.violazioni.some((v) => v.tipo === "capacita_eccedente"),
+    ).toBe(true)
+    expect(
+      esito.violazioni.some(
+        (v) =>
+          v.tipo === "monte_ore" &&
+          Number(v.riferimenti?.oreAttuali) < Number(v.riferimenti?.oreTarget),
+      ),
+    ).toBe(false)
+  })
+
+  it("allega i blocker strutturati a uno slot scoperto", () => {
+    const dati = scenario()
+    dati.regole = { ...dati.regole, maxOreSettimana: 1 }
+    const esito = generaPiano(dati, { seme: 1, tempoMaxMs: 0 })
+    const copertura = esito.violazioni.find((v) => v.tipo === "copertura")
+    expect(copertura).toBeDefined()
+
+    const blocker = copertura!.riferimenti?.blocker as
+      | { codice: string; conteggio: number }[]
+      | undefined
+    expect(blocker).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ codice: "max_ore_settimana" }),
+      ]),
+    )
+  })
+})

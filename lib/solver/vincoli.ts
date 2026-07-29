@@ -949,12 +949,49 @@ export function trovaViolazioni(
       })
   }
   for (const v of scoperti.values()) {
+    const slot = m.slots.find(
+      (sl) =>
+        sl.data === v.data &&
+        m.postazioni[sl.postazioneIdx].nome === v.post &&
+        m.turni[sl.turnoIdx].nome === v.turno &&
+        s.assegnatoA[sl.idx] === -1,
+    )
+    const blocker = new Map<
+      string,
+      { codice: string; conteggio: number; vincoloIds: string[] }
+    >()
+    if (slot) {
+      for (let lav = 0; lav < m.lavoratori.length; lav++) {
+        const valutazione = valutaAssegnabilita(m, s, c, slot.idx, lav)
+        for (const motivo of valutazione.motivi) {
+          const precedente = blocker.get(motivo.codice)
+          if (precedente) {
+            precedente.conteggio++
+            if (motivo.vincoloId && !precedente.vincoloIds.includes(motivo.vincoloId)) {
+              precedente.vincoloIds.push(motivo.vincoloId)
+            }
+          } else {
+            blocker.set(motivo.codice, {
+              codice: motivo.codice,
+              conteggio: 1,
+              vincoloIds: motivo.vincoloId ? [motivo.vincoloId] : [],
+            })
+          }
+        }
+      }
+    }
     out.push({
       tipo: "copertura",
       gravita: "bloccante",
       data: v.data,
       messaggio: `${v.data}: mancano ${v.n} persone su "${v.post}" nel turno ${v.turno}.`,
-      riferimenti: { postazione: v.post, turno: v.turno, mancanti: v.n },
+      riferimenti: {
+        slotKey: `${v.data}:${v.post}:${v.turno}`,
+        postazione: v.post,
+        turno: v.turno,
+        mancanti: v.n,
+        blocker: [...blocker.values()],
+      },
     })
   }
 
@@ -1018,14 +1055,42 @@ export function trovaViolazioni(
   }
 
   // --- Monte ore ------------------------------------------------------------
-  for (const r of riepiloghi(m, s, c)) {
+  const riepiloghiPiano = riepiloghi(m, s, c)
+  const oreRichieste = m.slots.reduce((totale, sl) => {
+    const t = m.turni[sl.turnoIdx]
+    return totale + (t.contaNelleOre ? (t.durataMin * t.pesoOre) / MIN_IN_H : 0)
+  }, 0)
+  const oreContrattuali = riepiloghiPiano.reduce((totale, r) => totale + r.oreTarget, 0)
+  const capacitaEccedente =
+    scoperti.size === 0 && oreContrattuali - oreRichieste > 1 / 60
+
+  if (capacitaEccedente) {
+    out.push({
+      tipo: "capacita_eccedente",
+      gravita: "info",
+      messaggio: `La copertura è completa: i turni richiedono ${formattaOre(oreRichieste * 60)}, mentre la capacità contrattuale del periodo è ${formattaOre(oreContrattuali * 60)}. Le ore non assegnate non corrispondono a turni mancanti.`,
+      riferimenti: {
+        oreRichieste,
+        oreContrattuali,
+        oreEccedenti: oreContrattuali - oreRichieste,
+      },
+    })
+  }
+
+  for (const r of riepiloghiPiano) {
     const scarto = r.oreTotali - r.oreTarget
+    if (capacitaEccedente && scarto < 0) continue
     if (Math.abs(scarto) >= 4) {
       out.push({
         tipo: "monte_ore",
         gravita: Math.abs(scarto) >= 8 ? "avviso" : "info",
         lavoratoreIdx: r.lavoratoreIdx,
-        messaggio: `${r.nome}: ${formattaOre(r.oreTotali * 60)} nel mese contro un obiettivo di ${formattaOre(r.oreTarget * 60)} (${scarto > 0 ? "+" : ""}${scarto.toFixed(1)}h).`,
+        messaggio: `${r.nome}: ${formattaOre(r.oreTotali * 60)} nel periodo contro un obiettivo di ${formattaOre(r.oreTarget * 60)} (${scarto > 0 ? "+" : ""}${scarto.toFixed(1)}h).`,
+        riferimenti: {
+          lavoratoreId: m.lavoratori[r.lavoratoreIdx].id,
+          oreAttuali: r.oreTotali,
+          oreTarget: r.oreTarget,
+        },
       })
     }
   }
