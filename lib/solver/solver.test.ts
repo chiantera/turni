@@ -267,6 +267,68 @@ describe("contabilità della fattibilità", () => {
   })
 })
 
+describe("nessun vincolo accettato viene ignorato in silenzio", () => {
+  /** Vincolo minimo, con i campi che il DSL richiede per quel kind. */
+  function vincolo(kind: Vincolo["kind"], extra: Partial<Vincolo> = {}): Vincolo {
+    return {
+      id: `v-${kind}`,
+      kind,
+      isHard: true,
+      peso: 100,
+      descrizione: `prova ${kind}`,
+      params: {},
+      ...extra,
+    }
+  }
+
+  const KIND_TUTTI: Vincolo["kind"][] = [
+    "indisponibile",
+    "preferenza",
+    "turno_vietato",
+    "postazione_fissa",
+    "insieme",
+    "separati",
+    "max_turni",
+    "min_turni",
+    "ore_override",
+    "copertura_override",
+    "assegnazione_fissa",
+  ]
+
+  it.each(KIND_TUTTI)(
+    "il kind %s viene applicato oppure segnalato, mai ignorato",
+    (kind) => {
+      // Un vincolo che l'applicazione accetta e poi scarta in silenzio è la
+      // peggior forma di errore: il pianificatore crede che la regola sia
+      // attiva, il piano la viola, e nulla lo segnala. O il solver la
+      // applica, o deve dire che non la sa applicare.
+      const v = vincolo(kind, {
+        params: {
+          lavoratore: "l-0",
+          lavoratori: ["l-0", "l-1"],
+          postazioni: ["p-0"],
+          turni: ["N"],
+          giorni: [0],
+          date: ["2026-08-09"],
+          n: 1,
+          ore_settimana: 20,
+        },
+      })
+
+      const esito = generaPiano(scenario({ nLavoratori: 9, vincoli: [v] }), {
+        seme: 4,
+        tempoMaxMs: 0,
+      })
+
+      const applicato = esito.vincoliApplicati.includes(v.id)
+      const segnalato = esito.violazioni.some(
+        (x) => x.tipo === "vincolo_non_supportato" && x.riferimenti?.vincoloId === v.id,
+      )
+      expect(applicato || segnalato).toBe(true)
+    },
+  )
+})
+
 describe("copertura con validità datata", () => {
   /** Divide ogni regola in due metà del mese, non sovrapposte. */
   function coperturaDivisa(base: ReturnType<typeof scenario>) {

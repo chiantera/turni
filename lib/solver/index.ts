@@ -37,6 +37,15 @@ export interface OpzioniSolver {
 export interface EsitoCompleto extends Risultato {
   modello: Modello
   fattibilita: Fattibilita
+  /** ID dei vincoli che il solver ha davvero applicato. */
+  vincoliApplicati: string[]
+  /** Vincoli accettati dall'interfaccia ma non applicati, con il motivo. */
+  vincoliNonApplicati: {
+    id: string
+    kind: string
+    descrizione: string
+    motivo: string
+  }[]
 }
 
 /** Genera un piano turni a partire dai dati grezzi. */
@@ -126,6 +135,8 @@ function componiRisultato(
     iterazioni: extra.iterazioni,
     tempoMs: extra.tempoMs,
     fattibilita: extra.fattibilita,
+    vincoliApplicati: [...c.applicati],
+    vincoliNonApplicati: c.nonApplicati,
   }
 }
 

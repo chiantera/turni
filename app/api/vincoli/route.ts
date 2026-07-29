@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { KIND_VINCOLO } from "@/lib/ai/dsl"
+import { KIND_NON_SUPPORTATI } from "@/lib/solver/vincoli"
 import { creaClientServer, ePianificatore } from "@/lib/supabase/server"
 
 export const runtime = "nodejs"
@@ -30,6 +31,20 @@ export async function POST(req: Request) {
     if (!KIND_VINCOLO.includes(v.kind)) {
       return NextResponse.json(
         { errore: `Tipo di vincolo non ammesso: "${v.kind}".` },
+        { status: 400 },
+      )
+    }
+    // Salvare una regola che il solver non sa applicare significa creare un
+    // vincolo morto: comparirebbe fra quelli attivi mentre il piano lo viola.
+    // Meglio rifiutarla subito, spiegando perché.
+    const motivoNonSupportato = KIND_NON_SUPPORTATI[v.kind]
+    if (motivoNonSupportato) {
+      return NextResponse.json(
+        {
+          errore:
+            `Il tipo di vincolo "${v.kind}" non è ancora applicabile dal solver: ` +
+            `${motivoNonSupportato}. Non viene salvato per non farlo sembrare attivo.`,
+        },
         { status: 400 },
       )
     }

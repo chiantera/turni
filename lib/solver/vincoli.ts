@@ -14,7 +14,7 @@
  */
 
 import { formattaOre } from "./tempo"
-import type { Modello, Stato, Vincolo, Violazione } from "./tipi"
+import type { Modello, Stato, Violazione } from "./tipi"
 
 const MIN_IN_H = 60
 const MS_IN_H = 3_600_000
@@ -44,6 +44,38 @@ export interface VincoliCompilati {
   insieme: { a: number; b: number; hard: boolean; peso: number; desc: string }[]
   /** Override del monte ore settimanale per singolo lavoratore. */
   oreOverride: Map<number, number>
+  /** ID dei vincoli che il solver applica davvero. */
+  applicati: Set<string>
+  /**
+   * Vincoli accettati dall'interfaccia ma NON applicati dal solver, con il
+   * motivo. Devono diventare violazioni visibili: un vincolo silenziosamente
+   * ignorato fa credere al pianificatore che la regola sia attiva mentre il
+   * piano la viola, ed è la forma di errore più difficile da scoprire.
+   */
+  nonApplicati: { id: string; kind: string; descrizione: string; motivo: string }[]
+}
+
+/**
+ * Kind del DSL che il solver non sa ancora tradurre in comportamento.
+ *
+ * Sono dichiarati qui invece di essere semplicemente omessi dallo switch:
+ * l'omissione è indistinguibile da una dimenticanza, mentre questo elenco
+ * costringe a una scelta consapevole e viene riportato all'utente.
+ *
+ * - `insieme`: "devono stare nello stesso turno" è un vincolo globale. Un
+ *   guardiano locale non può imporlo, perché quando si assegna il primo dei
+ *   due non si sa ancora se il secondo troverà posto.
+ * - `copertura_override` e `assegnazione_fissa`: modificano la forma del
+ *   modello (quanti slot esistono, chi è già fissato) e vanno applicati in
+ *   costruzione, non durante la ricerca.
+ */
+export const KIND_NON_SUPPORTATI: Record<string, string> = {
+  insieme:
+    "richiede una verifica globale: un controllo locale non può garantire che due persone finiscano nello stesso turno",
+  copertura_override:
+    "modifica il numero di slot e va applicato alla costruzione del modello",
+  assegnazione_fissa:
+    "fissa una persona su uno slot e va applicato alla costruzione del modello",
 }
 
 interface ParamsVincolo {
@@ -72,6 +104,8 @@ export function compilaVincoli(m: Modello): VincoliCompilati {
     separati: [],
     insieme: [],
     oreOverride: new Map(),
+    applicati: new Set(),
+    nonApplicati: [],
   }
 
   const idxLav = new Map(m.lavoratori.map((l, i) => [l.id, i]))
@@ -93,6 +127,15 @@ export function compilaVincoli(m: Modello): VincoliCompilati {
     const p = v.params as ParamsVincolo
     const lav = p.lavoratore ? idxLav.get(p.lavoratore) : undefined
 
+    const applica = () => c.applicati.add(v.id)
+    const scarta = (motivo: string) =>
+      c.nonApplicati.push({
+        id: v.id,
+        kind: v.kind,
+        descrizione: v.descrizione,
+        motivo,
+      })
+
     // Giorni dell'orizzonte toccati dal vincolo
     const giorniValidi: number[] = []
     for (let g = 0; g < nG; g++) {
@@ -110,8 +153,19 @@ export function compilaVincoli(m: Modello): VincoliCompilati {
     switch (v.kind) {
       case "indisponibile":
       case "turno_vietato": {
-        if (lav === undefined) break
+        if (lav === undefined) {
+          scarta("il lavoratore indicato non esiste o non è più attivo")
+          break
+        }
         const turni = risolviTurni(p.turni)
+        if (turni.length === 0) {
+          scarta("nessuno dei turni indicati esiste")
+          break
+        }
+        if (giorniValidi.length === 0) {
+          scarta("il periodo di validità non tocca l'intervallo pianificato")
+          break
+        }
         for (const g of giorniValidi) {
           for (const t of turni) {
             const i = lav * nG * nT + g * nT + t
@@ -119,70 +173,154 @@ export function compilaVincoli(m: Modello): VincoliCompilati {
             else c.preferenza[i] += v.peso // costo positivo = da evitare
           }
         }
+        applica()
         break
       }
 
       case "preferenza": {
-        if (lav === undefined) break
+        if (lav === undefined) {
+          scarta("il lavoratore indicato non esiste o non è più attivo")
+          break
+        }
         const turni = risolviTurni(p.turni)
+        if (turni.length === 0) {
+          scarta("nessuno dei turni indicati esiste")
+          break
+        }
+        if (giorniValidi.length === 0) {
+          scarta("il periodo di validità non tocca l'intervallo pianificato")
+          break
+        }
         for (const g of giorniValidi) {
           for (const t of turni) {
             // Premio: costo negativo quando la preferenza è soddisfatta.
             c.preferenza[lav * nG * nT + g * nT + t] -= v.peso
           }
         }
+        applica()
         break
       }
 
       case "postazione_fissa": {
-        if (lav === undefined || !p.postazioni) break
+        if (lav === undefined) {
+          scarta("il lavoratore indicato non esiste o non è più attivo")
+          break
+        }
+        // La variante morbida richiederebbe un costo per postazione, che oggi
+        // non esiste. Applicarla come divieto la trasformerebbe in un obbligo
+        // assoluto: una semplice preferenza potrebbe lasciare turni scoperti.
+        if (!v.isHard) {
+          scarta(
+            "la variante come preferenza non è ancora supportata: impostalo come obbligo assoluto oppure rimuovilo",
+          )
+          break
+        }
         const consentite = new Set(
-          p.postazioni.map((x) => idxPost.get(x)).filter((x): x is number => x !== undefined),
+          (p.postazioni ?? [])
+            .map((x) => idxPost.get(x))
+            .filter((x): x is number => x !== undefined),
         )
-        if (consentite.size === 0) break
+        if (consentite.size === 0) {
+          scarta("nessuna delle postazioni indicate esiste")
+          break
+        }
         for (let pi = 0; pi < nP; pi++) {
           if (!consentite.has(pi)) c.postVietata[lav * nP + pi] = 1
         }
+        applica()
         break
       }
 
       case "max_turni":
       case "min_turni": {
-        if (lav === undefined || p.n === undefined) break
+        if (lav === undefined) {
+          scarta("il lavoratore indicato non esiste o non è più attivo")
+          break
+        }
+        if (p.n === undefined) {
+          scarta("manca il numero di turni")
+          break
+        }
         const turni = risolviTurni(p.turni)
+        if (turni.length === 0) {
+          scarta("nessuno dei turni indicati esiste")
+          break
+        }
         for (const t of turni) {
-          const voce = { lav, turno: t, n: p.n, hard: v.isHard, peso: v.peso, desc: v.descrizione }
+          const voce = {
+            lav,
+            turno: t,
+            n: p.n,
+            hard: v.isHard,
+            peso: v.peso,
+            desc: v.descrizione,
+          }
           if (v.kind === "max_turni") c.maxTurni.push(voce)
           else c.minTurni.push(voce)
         }
+        applica()
         break
       }
 
-      case "separati":
-      case "insieme": {
+      case "separati": {
         const ids = (p.lavoratori ?? []).map((x) => idxLav.get(x))
-        if (ids.length < 2 || ids[0] === undefined || ids[1] === undefined) break
-        const voce = {
+        if (ids.length < 2 || ids[0] === undefined || ids[1] === undefined) {
+          scarta("servono due lavoratori esistenti e attivi")
+          break
+        }
+        // Come sopra: il costo per coppia non è ancora nella funzione
+        // obiettivo, quindi la variante morbida non avrebbe alcun effetto.
+        if (!v.isHard) {
+          scarta(
+            "la variante come preferenza non è ancora supportata: impostalo come obbligo assoluto oppure rimuovilo",
+          )
+          break
+        }
+        c.separati.push({
           a: ids[0],
           b: ids[1],
-          hard: v.isHard,
+          hard: true,
           peso: v.peso,
           desc: v.descrizione,
-        }
-        if (v.kind === "separati") c.separati.push(voce)
-        else c.insieme.push(voce)
+        })
+        applica()
         break
       }
 
       case "ore_override": {
-        if (lav === undefined || p.ore_settimana === undefined) break
+        if (lav === undefined) {
+          scarta("il lavoratore indicato non esiste o non è più attivo")
+          break
+        }
+        if (p.ore_settimana === undefined) {
+          scarta("mancano le ore settimanali")
+          break
+        }
         c.oreOverride.set(lav, p.ore_settimana)
+        applica()
         break
       }
+
+      case "insieme":
+      case "copertura_override":
+      case "assegnazione_fissa":
+        scarta(KIND_NON_SUPPORTATI[v.kind])
+        break
+
+      default:
+        // Se un nuovo kind viene aggiunto a KindVincolo senza un ramo qui,
+        // il compilatore si ferma su questa riga. È l'unico modo perché
+        // "aggiungere un tipo di vincolo" non significhi "aggiungere un
+        // vincolo che nessuno applica".
+        vincoloNonGestito(v.kind)
     }
   }
 
   return c
+}
+
+function vincoloNonGestito(kind: never): never {
+  throw new Error(`Tipo di vincolo non gestito dal solver: ${String(kind)}`)
 }
 
 // ---------------------------------------------------------------------------
@@ -571,6 +709,18 @@ export function trovaViolazioni(
   const out: Violazione[] = []
   const nG = m.nGiorni
   const nT = m.turni.length
+
+  // --- Vincoli accettati ma non applicati ----------------------------------
+  // Vanno in cima e sono bloccanti: finché uno di questi resta, il piano non
+  // rispetta una regola che il pianificatore crede attiva.
+  for (const v of c.nonApplicati) {
+    out.push({
+      tipo: "vincolo_non_supportato",
+      gravita: "bloccante",
+      messaggio: `Il vincolo «${v.descrizione}» non è stato applicato: ${v.motivo}.`,
+      riferimenti: { vincoloId: v.id, kind: v.kind, motivo: v.motivo },
+    })
+  }
 
   // --- Slot scoperti (raggruppati per giorno/turno/postazione) -------------
   const scoperti = new Map<string, { data: string; post: string; turno: string; n: number }>()
