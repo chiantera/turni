@@ -49,4 +49,26 @@ describe("analisi controfattuale dei vincoli", () => {
     expect(risultati).toHaveLength(1)
     expect(risultati[0].vincoloId).toBe(vincoloMax.id)
   })
+
+  it("normalizza limiti frazionari e non finiti", () => {
+    const vincoli = Array.from({ length: 4 }, (_, i) => ({
+      ...vincoloMax,
+      id: `v-max-${i}`,
+    }))
+    const dati = scenario({ vincoli })
+    const ids = vincoli.map((vincolo) => vincolo.id)
+
+    expect(
+      valutaRilassamenti(dati, { slotScoperti: 10 }, ids, {
+        massimoEsperimenti: 1.9,
+        tempoMaxMs: 0,
+      }),
+    ).toHaveLength(1)
+    expect(
+      valutaRilassamenti(dati, { slotScoperti: 10 }, ids, {
+        massimoEsperimenti: Number.NaN,
+        tempoMaxMs: 0,
+      }),
+    ).toHaveLength(3)
+  })
 })

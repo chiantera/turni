@@ -1,5 +1,6 @@
 import { generaPiano, type OpzioniSolver } from "./index"
-import type { DatiIngresso } from "./modello"
+import { costruisciModello, type DatiIngresso } from "./modello"
+import { compilaVincoli } from "./vincoli"
 
 export interface EsitoControfattuale {
   vincoloId: string
@@ -27,15 +28,22 @@ export function valutaRilassamenti(
   vincoloIds: string[],
   opz: OpzioniControfattuali = {},
 ): EsitoControfattuale[] {
-  const massimo = Math.max(0, Math.min(opz.massimoEsperimenti ?? 3, 3))
+  if (!Number.isFinite(baseline.slotScoperti) || baseline.slotScoperti < 0) {
+    return []
+  }
+  const slotScopertiPrima = Math.floor(baseline.slotScoperti)
+  const richiesto = opz.massimoEsperimenti ?? 3
+  const normalizzato = Number.isFinite(richiesto) ? Math.floor(richiesto) : 3
+  const massimo = Math.max(0, Math.min(normalizzato, 3))
   const candidati: DatiIngresso["vincoli"] = []
   const visti = new Set<string>()
+  const applicati = compilaVincoli(costruisciModello(dati)).applicati
 
   for (const id of vincoloIds) {
     if (visti.has(id)) continue
     visti.add(id)
     const vincolo = dati.vincoli.find((v) => v.id === id)
-    if (!vincolo || !vincolo.isHard) continue
+    if (!vincolo || !vincolo.isHard || !applicati.has(vincolo.id)) continue
     candidati.push(vincolo)
     if (candidati.length >= massimo) break
   }
@@ -44,17 +52,17 @@ export function valutaRilassamenti(
   for (const vincolo of candidati) {
     const datiRilassati: DatiIngresso = {
       ...dati,
-      vincoli: dati.vincoli.filter((v) => v.id !== vincolo.id),
+      vincoli: dati.vincoli.filter((v) => v !== vincolo),
     }
     const esito = generaPiano(datiRilassati, {
       seme: opz.seme ?? 1,
       tempoMaxMs: opz.tempoMaxMs ?? 1_000,
     })
-    const recuperati = baseline.slotScoperti - esito.slotScoperti
+    const recuperati = slotScopertiPrima - esito.slotScoperti
     risultati.push({
       vincoloId: vincolo.id,
       descrizione: vincolo.descrizione,
-      slotScopertiPrima: baseline.slotScoperti,
+      slotScopertiPrima,
       slotScopertiDopo: esito.slotScoperti,
       slotRecuperati: Math.max(0, recuperati),
       utile: recuperati > 0,
