@@ -25,6 +25,11 @@ import {
 export * from "./tipi"
 export { costruisciModello, PESI_DEFAULT, REGOLE_DEFAULT } from "./modello"
 export type { DatiIngresso } from "./modello"
+export {
+  valutaRilassamenti,
+  type EsitoControfattuale,
+  type OpzioniControfattuali,
+} from "./controfattuali"
 export { verificaFattibilita } from "./fattibilita"
 export type { Fattibilita } from "./fattibilita"
 export * from "./tempo"
