@@ -144,8 +144,9 @@ selezionato, comportamento indicato anche nell'interfaccia.
 Se il solver lascia delle **segnalazioni**, ogni riga permette di chiedere un
 suggerimento AI mirato. La richiesta contiene una sola segnalazione e riduce il
 contesto a lavoratori, postazioni, turni, copertura e vincoli pertinenti, così da
-limitare token, latenza e costo. L'analisi congiunta di tutte le segnalazioni è
-identificata come funzionalità **Premium** ad alto consumo; resta attiva durante
+limitare token, latenza e costo. L'analisi congiunta del piano include fino a
+100 segnalazioni ed è identificata come funzionalità **Premium** ad alto consumo;
+resta attiva durante
 lo sviluppo. I suggerimenti non modificano automaticamente alcun dato: vanno
 valutati dal pianificatore e verificati con una nuova esecuzione del solver.
 
@@ -162,7 +163,8 @@ valutati dal pianificatore e verificati con una nuova esecuzione del solver.
   citati, i lavoratori abilitati e i loro vincoli pertinenti. Per segnalazioni
   personali conserva il lavoratore citato e i relativi vincoli. Il prompt indica
   esplicitamente che deve analizzare una **singola segnalazione**.
-- **`Analizza tutte con l’AI`** continua a inviare il contesto complessivo ed è
+- **`Analizza il piano con l’AI`** invia il contesto complessivo con un limite
+  esplicito di 100 segnalazioni ed è
   contrassegnato `Premium · attiva per ora`: l'accesso resta aperto durante lo
   sviluppo, ma il consumo elevato è una scelta di prodotto distinta.
 - Le risposte pubbliche contengono soltanto diagnosi, azioni, percorsi e limiti.
@@ -491,8 +493,8 @@ this explicitly.
 When the solver leaves **diagnostics**, each row offers a targeted AI
 suggestion. The request contains one diagnostic and trims context to relevant
 workers, positions, shifts, coverage, and constraints, reducing tokens, latency,
-and cost. Joint analysis of every diagnostic is marked as a high-consumption
-**Premium** feature and remains enabled during development. Suggestions never
+and cost. Joint plan analysis includes up to 100 diagnostics and is marked as a
+high-consumption **Premium** feature and remains enabled during development. Suggestions never
 modify data automatically: a planner must evaluate them and verify the result
 by running the solver again.
 
@@ -508,7 +510,8 @@ by running the solver again.
   qualified workers, and their relevant constraints. Worker diagnostics retain
   the referenced worker and related constraints. The prompt explicitly limits
   the model to a **single diagnostic**.
-- **`Analizza tutte con l’AI`** continues to send whole-plan context and is
+- **`Analizza il piano con l’AI`** sends whole-plan context with an explicit
+  100-diagnostic limit and is
   labelled `Premium · attiva per ora`: it remains available during development,
   while its higher consumption is treated as a separate product capability.
 - Public responses contain only the diagnosis, actions, application paths, and

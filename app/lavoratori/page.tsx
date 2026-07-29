@@ -3,9 +3,9 @@ import { revalidatePath } from "next/cache"
 import Navigazione from "@/app/componenti/Navigazione"
 import { dataEstesa } from "@/lib/dati/formato"
 import {
-  assenzaCompatibileConSchemaPrecedente,
   statoCellaLavoratore,
 } from "@/lib/dati/stato-cella-piano"
+import { salvaAssenzaConCompatibilita } from "@/lib/dati/salvataggio-assenza"
 import { creaClientServer } from "@/lib/supabase/server"
 import type { Enums } from "@/lib/supabase/types"
 
@@ -81,16 +81,10 @@ async function aggiungiAssenza(formData: FormData) {
     tipo,
     giornata_intera: true,
   }
-  const inserimento = await sb.from("absences").insert(nuovaAssenza)
-  if (
-    inserimento.error?.code === "22P02" &&
-    (tipo === "disciplinare" || tipo === "studio")
-  ) {
-    await sb.from("absences").insert({
-      ...nuovaAssenza,
-      ...assenzaCompatibileConSchemaPrecedente(tipo),
-    })
-  }
+  await salvaAssenzaConCompatibilita(nuovaAssenza, async (assenza) => {
+    const { error } = await sb.from("absences").insert(assenza)
+    return { error }
+  })
   revalidatePath("/lavoratori")
   revalidatePath("/pianificazione/[mese]", "page")
 }

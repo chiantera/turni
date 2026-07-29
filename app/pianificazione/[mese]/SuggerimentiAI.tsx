@@ -147,9 +147,9 @@ export default function SuggerimentiAI({
             </span>
           </div>
           <p className="mt-0.5 text-xs text-tenue">
-            Analizza tutte le {numeroSegnalazioni ?? 0} segnalazioni insieme a
-            copertura, organico, assenze e vincoli. Consuma più risorse e non
-            modifica nulla automaticamente.
+            Analizza insieme fino a 100 delle {numeroSegnalazioni ?? 0}{" "}
+            segnalazioni, con copertura, organico, assenze e vincoli. Consuma più
+            risorse e non modifica nulla automaticamente.
           </p>
         </div>
         <button
@@ -162,7 +162,7 @@ export default function SuggerimentiAI({
             ? "Analizzo…"
             : esito
               ? "Rigenera analisi completa"
-              : "Analizza tutte con l’AI"}
+              : "Analizza il piano con l’AI"}
         </button>
       </div>
 

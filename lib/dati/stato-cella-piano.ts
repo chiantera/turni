@@ -31,6 +31,25 @@ export const STATI_CELLA_LAVORATORE: ReadonlyArray<
   { tipo: "altro", codice: "A", etichetta: "Altro", assenza: true },
 ]
 
+export function etichettaAccessibileCellaLavoratore({
+  lavoratore,
+  data,
+  stato,
+  turno,
+  postazione,
+}: {
+  lavoratore: string
+  data: string
+  stato?: string
+  turno?: string
+  postazione?: string
+}): string {
+  const contenuto =
+    stato ??
+    `${turno ?? "Turno non disponibile"} · ${postazione ?? "Postazione non disponibile"}`
+  return `${lavoratore}, ${data}: ${contenuto}. Clicca per modificare.`
+}
+
 const STATI_LEGACY: ReadonlyArray<
   Pick<StatoCellaLavoratore, "tipo" | "codice" | "etichetta" | "assenza">
 > = [

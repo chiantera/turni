@@ -28,6 +28,7 @@ import {
 } from "@/lib/dati/modifiche-piano"
 import {
   STATI_CELLA_LAVORATORE,
+  etichettaAccessibileCellaLavoratore,
   statoCellaLavoratore,
 } from "@/lib/dati/stato-cella-piano"
 import { giornoSettimana } from "@/lib/solver/tempo"
@@ -521,6 +522,13 @@ export default function TabellaPianoInterattiva({
                               type="button"
                               disabled={inSalvataggio}
                               onClick={() => apriLavoratore(l.id, g)}
+                              aria-label={etichettaAccessibileCellaLavoratore({
+                                lavoratore: `${l.nome} ${l.cognome}`,
+                                data: g,
+                                ...(a
+                                  ? { turno: t?.nome, postazione: p?.nome }
+                                  : { stato: stato?.etichetta ?? "Riposo" }),
+                              })}
                               className="group relative grid h-7 w-full min-w-8 place-items-center rounded hover:bg-accento-tenue focus:outline-none focus:ring-2 focus:ring-accento"
                               title={
                                 a

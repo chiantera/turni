@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   assenzaCompatibileConSchemaPrecedente,
+  etichettaAccessibileCellaLavoratore,
   statoCellaLavoratore,
   type AssenzaCellaPiano,
 } from "./stato-cella-piano"
@@ -23,6 +24,24 @@ function assenza(
 }
 
 describe("stato delle celle senza assegnazione nella vista per lavoratore", () => {
+  it("descrive in modo accessibile sia stati sia assegnazioni", () => {
+    expect(
+      etichettaAccessibileCellaLavoratore({
+        lavoratore: "Mario Rossi",
+        data: "2026-08-03",
+        stato: "Riposo",
+      }),
+    ).toBe("Mario Rossi, 2026-08-03: Riposo. Clicca per modificare.")
+    expect(
+      etichettaAccessibileCellaLavoratore({
+        lavoratore: "Mario Rossi",
+        data: "2026-08-03",
+        turno: "Mattino",
+        postazione: "Reparto A",
+      }),
+    ).toBe("Mario Rossi, 2026-08-03: Mattino · Reparto A. Clicca per modificare.")
+  })
+
   it.each([
     [[], "R", "Riposo"],
     [[assenza("ferie")], "F", "Ferie"],
