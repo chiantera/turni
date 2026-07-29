@@ -108,6 +108,27 @@ viene ricostruita con i nuovi valori alla visita successiva.
 - **Salva modifiche** scrive in Supabase solo le celle cambiate, mentre
   **Annulla** ripristina l'ultimo stato salvato.
 
+#### Intestazioni di riga interattive
+
+La prima colonna delle due proiezioni funziona anche come navigazione
+contestuale, senza trasformare le intestazioni in collegamenti diretti e senza
+interferire con la modifica delle celle:
+
+- in **per lavoratore**, il nome apre un riquadro con le ore contrattuali e i
+  collegamenti **Dati lavoratore** e **Riepilogo**;
+- in **per postazione**, la coppia postazione/turno apre un riquadro con codice e
+  orario del turno e i collegamenti **Dati postazione**, **Dati turno**,
+  **Copertura** e **Riepilogo**;
+- i collegamenti alle anagrafiche e alla copertura portano direttamente alla
+  riga corrispondente, che viene evidenziata;
+- se il piano contiene modifiche non salvate, il riquadro avvisa prima di
+  cambiare pagina.
+
+Le intestazioni sono pulsanti utilizzabili con tastiera. Il riquadro porta il
+focus sui propri controlli, mantiene la navigazione `Tab` al suo interno, si
+chiude con `Esc`, con il pulsante di chiusura o con un clic esterno e, quando
+appropriato, restituisce il focus all'intestazione di partenza.
+
 Le assegnazioni manuali vengono memorizzate con origine `manuale` e marcate
 come bloccate. Una nuova generazione sostituisce le assegnazioni dell'intervallo
 selezionato, comportamento indicato anche nell'interfaccia.
@@ -397,6 +418,26 @@ rebuilt with the updated values on the next visit.
   to the corresponding records, coverage, and overview;
 - **Save changes** persists only changed cells to Supabase, while **Cancel**
   restores the last saved state.
+
+#### Interactive row headers
+
+The first column in both projections also provides contextual navigation. Row
+headers open a bubble rather than navigating immediately, and this interaction
+does not affect assignment-cell editing:
+
+- in **by worker**, a worker name shows contract hours and links to **Worker
+  data** and **Overview**;
+- in **by position**, a position/shift pair shows the shift code and hours and
+  links to **Position data**, **Shift data**, **Coverage**, and **Overview**;
+- record and coverage links scroll directly to and highlight the corresponding
+  row;
+- when the draft contains unsaved changes, the bubble warns before leaving the
+  planning page.
+
+Row headers are keyboard-operable buttons. The bubble moves focus to its own
+controls, keeps `Tab` navigation inside, closes with `Escape`, its close button,
+or an outside click, and restores focus to the originating header when
+appropriate.
 
 Manual assignments are stored with `manuale` origin and marked as locked.
 Generating again replaces assignments in the selected range, and the UI states
