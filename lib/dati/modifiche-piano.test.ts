@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   aggiornaCellaLavoratore,
   aggiornaCellaPostazione,
+  aspettoCellaPiano,
   lavoratoriCellaPostazione,
   calcolaModifiche,
   codificaScelta,
@@ -141,6 +142,16 @@ describe("preparazione del salvataggio", () => {
 })
 
 describe("interazioni sulle tabelle colorate", () => {
+  it("usa il colore della postazione e il codice del turno", () => {
+    expect(
+      aspettoCellaPiano(
+        mattinoRepartoA,
+        [{ id: "position-a", colore: "#2563eb" }],
+        [{ id: "shift-m", codice: "M", colore: "#111111" }],
+      ),
+    ).toEqual({ colore: "#2563eb", codice: "M" })
+  })
+
   it("propaga una modifica per lavoratore nella proiezione per postazione", () => {
     const correnti = aggiornaCellaLavoratore(
       [mattinoRepartoA],

@@ -5,6 +5,18 @@ export interface AssegnazioneModificabile {
   positionId: string | null
 }
 
+export function aspettoCellaPiano(
+  assegnazione: AssegnazioneModificabile,
+  postazioni: { id: string; colore: string }[],
+  turni: { id: string; codice: string; colore?: string }[],
+): { colore: string | null; codice: string | null } {
+  return {
+    colore:
+      postazioni.find((p) => p.id === assegnazione.positionId)?.colore ?? null,
+    codice: turni.find((t) => t.id === assegnazione.shiftTypeId)?.codice ?? null,
+  }
+}
+
 export class ErroreModifichePiano extends Error {}
 
 function chiaveCella(a: Pick<AssegnazioneModificabile, "workerId" | "data">): string {

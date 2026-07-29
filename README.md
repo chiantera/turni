@@ -49,7 +49,9 @@ garantire copertura, monte ore o riposi, e non sarebbe riproducibile.
 ### Modifica manuale e salvataggio del piano
 
 Dopo **Genera il piano**, entrambe le proiezioni della griglia restano
-interattive senza perdere il formato compatto e i colori dei turni:
+interattive senza perdere il formato compatto. Il colore di ogni riquadro
+identifica la **postazione**, mentre le lettere **M**, **P** e **N** identificano
+rispettivamente il turno mattino, pomeriggio e notte:
 
 - nella vista **per lavoratore**, un clic sulla cella giorno/lavoratore apre
   l'editor per cambiare turno e postazione oppure impostare il riposo;
@@ -291,7 +293,9 @@ contract hours, or legal rest periods, and its result would not be reproducible.
 ### Manual schedule editing and persistence
 
 After **Generate schedule**, both grid projections remain interactive while
-preserving the compact layout and the shift colors:
+preserving the compact layout. Each square's color identifies the **position**,
+while the letters **M**, **P**, and **N** identify the morning, afternoon, and
+night shifts respectively:
 
 - in the **by worker** view, clicking a worker/day cell opens an editor to
   change the shift and position or mark the day as rest;

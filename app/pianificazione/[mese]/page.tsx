@@ -265,7 +265,7 @@ export default async function Pianificazione({
                                 {t ? (
                                   <span
                                     className="inline-block w-6 h-6 leading-6 rounded font-medium text-white text-xs"
-                                    style={{ backgroundColor: t.colore }}
+                                    style={{ backgroundColor: p?.colore }}
                                   >
                                     {t.codice}
                                   </span>
@@ -294,9 +294,11 @@ export default async function Pianificazione({
                         <tr key={`${p.id}:${t.id}`} className="hover:bg-accento-tenue/40">
                           <td className="sticky left-0 z-10 bg-superficie px-3 py-1.5 border-b border-r border-bordo whitespace-nowrap">
                             <span
-                              className="inline-block w-2 h-2 rounded-full mr-2 align-middle"
+                              className="mr-2 inline-block h-5 w-5 rounded text-center text-[10px] font-medium leading-5 text-white align-middle"
                               style={{ backgroundColor: p.colore }}
-                            />
+                            >
+                              {t.codice}
+                            </span>
                             {p.nome}
                             <span className="text-tenue"> · {t.nome}</span>
                           </td>
@@ -341,14 +343,23 @@ export default async function Pianificazione({
         )}
 
         {/* --- Legenda --- */}
-        {(turni.data ?? []).length > 0 && (
-          <div className="flex flex-wrap items-center gap-4 text-sm text-tenue">
-            <span>Legenda:</span>
+        {((postazioni.data ?? []).length > 0 || (turni.data ?? []).length > 0) && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-tenue">
+            <span className="font-medium text-testo">Postazioni:</span>
+            {(postazioni.data ?? []).map((p) => (
+              <span key={p.id} className="flex items-center gap-1.5">
+                <span
+                  className="inline-block h-5 w-5 rounded"
+                  style={{ backgroundColor: p.colore }}
+                />
+                {p.nome}
+              </span>
+            ))}
+            <span className="ml-2 font-medium text-testo">Turni:</span>
             {(turni.data ?? []).map((t) => (
               <span key={t.id} className="flex items-center gap-1.5">
                 <span
-                  className="inline-block w-5 h-5 leading-5 rounded text-center text-white text-xs font-medium"
-                  style={{ backgroundColor: t.colore }}
+                  className="inline-block h-5 w-5 rounded border border-bordo bg-superficie text-center text-xs font-medium leading-5 text-testo"
                 >
                   {t.codice}
                 </span>

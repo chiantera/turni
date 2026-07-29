@@ -7,6 +7,7 @@ import { GIORNI_BREVI, ore } from "@/lib/dati/formato"
 import {
   aggiornaCellaLavoratore,
   aggiornaCellaPostazione,
+  aspettoCellaPiano,
   calcolaModifiche,
   lavoratoriCellaPostazione,
   type AssegnazioneModificabile,
@@ -309,6 +310,7 @@ export default function TabellaPianoInterattiva({
                         const iniziale = inizialePerLavoratoreGiorno.get(k)
                         const t = a?.shiftTypeId ? turnoPerId.get(a.shiftTypeId) : null
                         const p = a?.positionId ? postazionePerId.get(a.positionId) : null
+                        const aspetto = a ? aspettoCellaPiano(a, postazioni, turni) : null
                         const cambiata =
                           a?.shiftTypeId !== iniziale?.shiftTypeId ||
                           a?.positionId !== iniziale?.positionId
@@ -329,9 +331,9 @@ export default function TabellaPianoInterattiva({
                               {t ? (
                                 <span
                                   className="inline-block h-6 w-6 rounded text-xs font-medium leading-6 text-white shadow-sm transition-transform group-hover:scale-110"
-                                  style={{ backgroundColor: t.colore }}
+                                  style={{ backgroundColor: aspetto?.colore ?? undefined }}
                                 >
-                                  {t.codice}
+                                  {aspetto?.codice}
                                 </span>
                               ) : (
                                 <span className="text-bordo transition-colors group-hover:text-accento">·</span>
@@ -358,9 +360,11 @@ export default function TabellaPianoInterattiva({
                     <tr key={`${p.id}:${t.id}`} className="hover:bg-accento-tenue/40">
                       <td className="sticky left-0 z-10 bg-superficie px-3 py-1.5 border-b border-r border-bordo whitespace-nowrap">
                         <span
-                          className="inline-block w-2 h-2 rounded-full mr-2 align-middle"
+                          className="mr-2 inline-block h-5 w-5 rounded text-center text-[10px] font-medium leading-5 text-white align-middle"
                           style={{ backgroundColor: p.colore }}
-                        />
+                        >
+                          {t.codice}
+                        </span>
                         {p.nome}
                         <span className="text-tenue"> · {t.nome}</span>
                       </td>
