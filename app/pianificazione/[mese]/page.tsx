@@ -45,21 +45,34 @@ function evidenzaViolazione(violazione: Violazione): string | null {
   if (!Array.isArray(blocker) || blocker.length === 0) return null
   const etichette: Record<string, string> = {
     assenza: "assenze",
+    assenza_turno: "assenze per turno",
     abilitazione_mancante: "abilitazioni mancanti",
     max_ore_settimana: "tetto ore settimanale",
+    max_turni: "limite di turni",
     riposo_insufficiente: "riposo minimo",
+    riposo_minimo: "riposo minimo",
+    riposo_dopo_notte: "riposo dopo notte",
     giorni_consecutivi: "giorni consecutivi",
     postazione_vietata: "postazione vietata",
     turno_vietato: "turno vietato",
+    turno_gia_assegnato: "turno già assegnato",
+    separati: "vincolo di separazione",
   }
-  const nomi = blocker
-    .map((voce) =>
-      voce && typeof voce === "object" && "codice" in voce
-        ? etichette[String(voce.codice)] ?? String(voce.codice)
-        : null,
-    )
-    .filter((nome): nome is string => nome !== null)
-  return nomi.length > 0 ? `Cause esaminate: ${[...new Set(nomi)].join(", ")}.` : null
+  const conteggi = new Map<string, number>()
+  for (const voce of blocker) {
+    if (!voce || typeof voce !== "object" || !("codice" in voce)) continue
+    const nome =
+      etichette[String(voce.codice)] ?? "altre cause di assegnabilità"
+    const conteggio =
+      "conteggio" in voce && typeof voce.conteggio === "number"
+        ? voce.conteggio
+        : 1
+    conteggi.set(nome, (conteggi.get(nome) ?? 0) + conteggio)
+  }
+  const nomi = [...conteggi].map(([nome, conteggio]) =>
+    conteggio > 1 ? `${nome} (${conteggio})` : nome,
+  )
+  return nomi.length > 0 ? `Cause esaminate: ${nomi.join(", ")}.` : null
 }
 
 export const dynamic = "force-dynamic"
@@ -226,14 +239,16 @@ export default async function Pianificazione({
             {bloccanti.length > 0 && (
               <ul className="max-h-56 space-y-1.5 overflow-y-auto">
                 {bloccanti.map((violazione) => (
-                  <li
+                  (() => {
+                    const evidenza = evidenzaViolazione(violazione)
+                    return <li
                     key={violazione.id}
                     className="rounded-lg bg-allarme-tenue px-3 py-2 text-sm text-allarme"
                   >
                     {violazione.messaggio}
-                    {evidenzaViolazione(violazione) && (
+                    {evidenza && (
                       <p className="mt-1 text-xs text-current/80">
-                        {evidenzaViolazione(violazione)}
+                        {evidenza}
                       </p>
                     )}
                     <SuggerimentiAI
@@ -242,6 +257,7 @@ export default async function Pianificazione({
                       segnalazioneId={violazione.id}
                     />
                   </li>
+                  })()
                 ))}
               </ul>
             )}
@@ -253,11 +269,13 @@ export default async function Pianificazione({
                 </summary>
                 <ul className="mt-2 max-h-56 space-y-1.5 overflow-y-auto">
                   {altre.map((violazione) => (
-                    <li key={violazione.id} className="px-3 py-1.5 text-sm text-tenue">
+                    (() => {
+                      const evidenza = evidenzaViolazione(violazione)
+                      return <li key={violazione.id} className="px-3 py-1.5 text-sm text-tenue">
                       {violazione.messaggio}
-                      {evidenzaViolazione(violazione) && (
+                      {evidenza && (
                         <p className="mt-1 text-xs text-current/80">
-                          {evidenzaViolazione(violazione)}
+                          {evidenza}
                         </p>
                       )}
                       <SuggerimentiAI
@@ -266,6 +284,7 @@ export default async function Pianificazione({
                         segnalazioneId={violazione.id}
                       />
                     </li>
+                    })()
                   ))}
                 </ul>
               </details>
