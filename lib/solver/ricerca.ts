@@ -30,6 +30,8 @@ import {
 
 export interface OpzioniRicerca {
   tempoMaxMs: number
+  /** Budget deterministico; se presente ha precedenza sul tempo di parete. */
+  iterazioniMax?: number
   /** Interrompe se non si migliora per N iterazioni consecutive. */
   stalloMax?: number
   temperaturaIniziale?: number
@@ -40,6 +42,8 @@ export interface EsitoRicerca {
   iterazioni: number
   tempoMs: number
   costoFinale: number
+  costoIniziale: number
+  miglioramento: number
 }
 
 export function ottimizza(
@@ -67,6 +71,7 @@ export function ottimizza(
   for (let i = 0; i < nSlot; i++) if (s.assegnatoA[i] === -1) scoperti++
   let equita = costoEquita(m, s)
   let costo = sommaLav + equita + scoperti * COSTO_SCOPERTO
+  const costoIniziale = costo
 
   // Migliore soluzione vista: l'annealing accetta anche peggioramenti, quindi
   // lo stato finale non è per forza il migliore incontrato.
@@ -76,7 +81,13 @@ export function ottimizza(
   const slotModificabili: number[] = []
   for (let i = 0; i < nSlot; i++) if (!s.bloccato[i]) slotModificabili.push(i)
   if (slotModificabili.length === 0) {
-    return { iterazioni: 0, tempoMs: Date.now() - t0, costoFinale: costo }
+    return {
+      iterazioni: 0,
+      tempoMs: Date.now() - t0,
+      costoFinale: costo,
+      costoIniziale,
+      miglioramento: 0,
+    }
   }
 
   let iter = 0
@@ -84,7 +95,12 @@ export function ottimizza(
   let T = T0
   const decadimento = 0.99995
 
-  while (Date.now() - t0 < opz.tempoMaxMs && stallo < stalloMax) {
+  while (
+    (opz.iterazioniMax !== undefined
+      ? iter < Math.max(0, opz.iterazioniMax)
+      : Date.now() - t0 < opz.tempoMaxMs) &&
+    stallo < stalloMax
+  ) {
     iter++
     T = Math.max(T1, T * decadimento)
 
@@ -136,6 +152,8 @@ export function ottimizza(
     iterazioni: iter,
     tempoMs: Date.now() - t0,
     costoFinale: miglioreCosto,
+    costoIniziale,
+    miglioramento: costoIniziale - miglioreCosto,
   }
 }
 

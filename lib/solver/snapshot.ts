@@ -11,6 +11,7 @@ export interface SnapshotSolver {
   iterazioni: number
   tempoMs: number
   costo: number
+  qualitaRicerca: EsitoCompleto["qualitaRicerca"]
   fattibilita: EsitoCompleto["fattibilita"]
   riepiloghi: EsitoCompleto["riepiloghi"]
   violazioni: EsitoCompleto["violazioni"]
@@ -37,6 +38,7 @@ export function snapshotDaEsito(
     iterazioni: esito.iterazioni,
     tempoMs: esito.tempoMs,
     costo: esito.costo,
+    qualitaRicerca: esito.qualitaRicerca,
     fattibilita: esito.fattibilita,
     riepiloghi: esito.riepiloghi,
     violazioni: esito.violazioni.slice(0, 500),

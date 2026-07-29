@@ -12,7 +12,7 @@ import { costruisciCiclicamente } from "./ciclico"
 import { verificaFattibilita, type Fattibilita } from "./fattibilita"
 import { costruisciGreedy } from "./greedy"
 import { costruisciModello, type DatiIngresso } from "./modello"
-import { ottimizza } from "./ricerca"
+import { ottimizza, type EsitoRicerca } from "./ricerca"
 import type { Modello, Risultato, Stato } from "./tipi"
 import {
   compilaVincoli,
@@ -37,11 +37,13 @@ export * from "./tempo"
 export interface OpzioniSolver {
   seme?: number
   tempoMaxMs?: number
+  iterazioniMax?: number
 }
 
 export interface EsitoCompleto extends Risultato {
   modello: Modello
   fattibilita: Fattibilita
+  qualitaRicerca: EsitoRicerca
   /** ID dei vincoli che il solver ha davvero applicato. */
   vincoliApplicati: string[]
   /** Vincoli accettati dall'interfaccia ma non applicati, con il motivo. */
@@ -84,12 +86,16 @@ export function risolviModello(
   //   3. ricerca locale   -> adatta a assenze, vincoli e festività
   costruisciCiclicamente(m, s, c, r)
   costruisciGreedy(m, s, c, r)
-  const esito = ottimizza(m, s, c, r, { tempoMaxMs })
+  const esito = ottimizza(m, s, c, r, {
+    tempoMaxMs,
+    iterazioniMax: opz.iterazioniMax,
+  })
 
   return componiRisultato(m, s, c, {
     iterazioni: esito.iterazioni,
     tempoMs: Date.now() - t0,
     fattibilita,
+    qualitaRicerca: esito,
   })
 }
 
@@ -113,12 +119,14 @@ export function riparaPiano(
   costruisciGreedy(m, s, c, r)
   const esito = ottimizza(m, s, c, r, {
     tempoMaxMs: opz.tempoMaxMs ?? 5_000,
+    iterazioniMax: opz.iterazioniMax,
   })
 
   return componiRisultato(m, s, c, {
     iterazioni: esito.iterazioni,
     tempoMs: Date.now() - t0,
     fattibilita,
+    qualitaRicerca: esito,
   })
 }
 
@@ -126,7 +134,12 @@ function componiRisultato(
   m: Modello,
   s: Stato,
   c: ReturnType<typeof compilaVincoli>,
-  extra: { iterazioni: number; tempoMs: number; fattibilita: Fattibilita },
+  extra: {
+    iterazioni: number
+    tempoMs: number
+    fattibilita: Fattibilita
+    qualitaRicerca: EsitoRicerca
+  },
 ): EsitoCompleto {
   const costo = costoTotale(m, s, c)
   const violazioni = trovaViolazioni(m, s, c)
@@ -142,6 +155,7 @@ function componiRisultato(
     iterazioni: extra.iterazioni,
     tempoMs: extra.tempoMs,
     fattibilita: extra.fattibilita,
+    qualitaRicerca: extra.qualitaRicerca,
     vincoliApplicati: [...c.applicati],
     vincoliNonApplicati: c.nonApplicati,
     vincoliFuoriPeriodo: c.fuoriPeriodo,

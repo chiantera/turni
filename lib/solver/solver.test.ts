@@ -210,6 +210,15 @@ describe("determinismo", () => {
     const b = generaPiano(scenario(), { seme: 999, tempoMaxMs: 0 })
     expect([...a.stato.assegnatoA]).not.toEqual([...b.stato.assegnatoA])
   })
+
+  it("rende la ricerca locale riproducibile con un budget di iterazioni", () => {
+    const dati = scenario({ nLavoratori: 9 })
+    const primo = generaPiano(dati, { seme: 17, tempoMaxMs: 50, iterazioniMax: 250 })
+    const secondo = generaPiano(dati, { seme: 17, tempoMaxMs: 50, iterazioniMax: 250 })
+
+    expect(secondo.stato.assegnatoA).toEqual(primo.stato.assegnatoA)
+    expect(primo.iterazioni).toBeLessThanOrEqual(250)
+  })
 })
 
 describe("scenario B — organico insufficiente", () => {
