@@ -42,6 +42,27 @@ export async function PUT(req: Request) {
         { status: 400 },
       )
     }
+    if (precondizioni.length > 0) {
+      const modifichePerCella = new Map(modifiche.map((m) => [`${m.workerId}:${m.data}`, m]))
+      const precondizioniPerCella = new Map(
+        precondizioni.map((p) => [`${p.workerId}:${p.data}`, p]),
+      )
+      const precondizioneMancante = modifiche.some((modifica) => {
+        const precondizione = precondizioniPerCella.get(`${modifica.workerId}:${modifica.data}`)
+        return (
+          !precondizione ||
+          !precondizione.shiftTypeId ||
+          !precondizione.positionId ||
+          modifichePerCella.get(`${precondizione.workerId}:${precondizione.data}`) !== modifica
+        )
+      })
+      if (precondizioneMancante || precondizioniPerCella.size !== modifichePerCella.size) {
+        return NextResponse.json(
+          { errore: "Le precondizioni non corrispondono alle celle da modificare." },
+          { status: 400 },
+        )
+      }
+    }
     if (modifiche.length === 0) {
       return NextResponse.json({ salvate: 0 })
     }
@@ -172,17 +193,34 @@ export async function PUT(req: Request) {
       }
 
       const rimozioni = await Promise.all(
-        daRimuovere.map((m) =>
-          sb
+        daRimuovere.map((m) => {
+          const precondizione = precondizioni.find(
+            (p) => p.workerId === m.workerId && p.data === m.data,
+          )
+          let query = sb
             .from("assignments")
             .delete()
             .eq("schedule_id", scheduleId)
             .eq("worker_id", m.workerId)
-            .eq("data", m.data),
-        ),
+            .eq("data", m.data)
+            .select("id")
+          if (precondizione?.shiftTypeId && precondizione.positionId) {
+            query = query
+              .eq("shift_type_id", precondizione.shiftTypeId)
+              .eq("position_id", precondizione.positionId)
+              .eq("bloccato", false)
+          }
+          return query
+        }),
       )
       const rimozioneFallita = rimozioni.find((x) => x.error)
       if (rimozioneFallita?.error) throw rimozioneFallita.error
+      if (precondizioni.length > 0 && rimozioni.some((x) => (x.data ?? []).length !== 1)) {
+        return NextResponse.json(
+          { errore: "Il piano è cambiato durante l'applicazione. Ricalcola il preview prima di riprovare." },
+          { status: 409 },
+        )
+      }
 
       const aggiornato = await sb
         .from("schedules")

@@ -24,9 +24,12 @@ type Candidato = Modifica & {
   limiteGruppo: number
 }
 
-function oreTurno(shiftTypeId: string, turni: Map<string, { durata_min: number; peso_ore: number }>): number {
+function oreTurno(
+  shiftTypeId: string,
+  turni: Map<string, { durata_min: number; peso_ore: number; conta_nelle_ore: boolean }>,
+): number {
   const turno = turni.get(shiftTypeId)
-  return turno ? (turno.durata_min * turno.peso_ore) / 60 : 0
+  return turno?.conta_nelle_ore ? (turno.durata_min * turno.peso_ore) / 60 : 0
 }
 
 function scegliCandidati(
@@ -59,20 +62,20 @@ function scegliCandidati(
   }
 
   for (const gruppo of perGruppo.values()) {
-    const ordinati = [...gruppo].sort((a, b) =>
-      politica === "concentrata"
-        ? Number(gruppoConcentrato.has(b.workerId)) - Number(gruppoConcentrato.has(a.workerId)) ||
-          b.ore - a.ore ||
-          a.data.localeCompare(b.data) ||
-          a.workerId.localeCompare(b.workerId)
-        : (oreRimosse.get(a.workerId) ?? 0) - (oreRimosse.get(b.workerId) ?? 0) ||
-          a.data.localeCompare(b.data) ||
-          a.workerId.localeCompare(b.workerId),
-    )
-
-    // The caller provides exactly the number of removable assignments required
-    // for the slot, so selecting all of this group preserves its coverage.
-    for (const candidato of ordinati.slice(0, gruppo[0]?.limiteGruppo ?? 0)) {
+    const disponibili = [...gruppo]
+    for (let indice = 0; indice < (gruppo[0]?.limiteGruppo ?? 0); indice++) {
+      disponibili.sort((a, b) =>
+        politica === "concentrata"
+          ? Number(gruppoConcentrato.has(b.workerId)) - Number(gruppoConcentrato.has(a.workerId)) ||
+            b.ore - a.ore ||
+            a.data.localeCompare(b.data) ||
+            a.workerId.localeCompare(b.workerId)
+          : (oreRimosse.get(a.workerId) ?? 0) - (oreRimosse.get(b.workerId) ?? 0) ||
+            a.data.localeCompare(b.data) ||
+            a.workerId.localeCompare(b.workerId),
+      )
+      const candidato = disponibili.shift()
+      if (!candidato) break
       scelti.push(candidato)
       oreRimosse.set(
         candidato.workerId,
@@ -131,7 +134,14 @@ export async function POST(req: Request) {
       richiesti.set(chiave, (richiesti.get(chiave) ?? 0) + 1)
     }
     const turni = new Map(
-      dati.turni.map((turno) => [turno.id, { durata_min: turno.durata_min, peso_ore: turno.peso_ore }]),
+      dati.turni.map((turno) => [
+        turno.id,
+        {
+          durata_min: turno.durata_min,
+          peso_ore: turno.peso_ore,
+          conta_nelle_ore: turno.conta_nelle_ore,
+        },
+      ]),
     )
     const gruppi = new Map<string, typeof assegnazioni.data>()
     for (const assegnazione of assegnazioni.data ?? []) {
@@ -146,7 +156,9 @@ export async function POST(req: Request) {
 
     const candidati: Candidato[] = []
     for (const [chiave, gruppo] of gruppi) {
-      const eccesso = Math.max(0, gruppo.length - (richiesti.get(chiave) ?? 0))
+      const richiesto = richiesti.get(chiave)
+      if (richiesto === undefined) continue
+      const eccesso = Math.max(0, gruppo.length - richiesto)
       if (eccesso === 0) continue
       const selezionabili = gruppo.filter((assegnazione) => !assegnazione.bloccato)
       for (const assegnazione of selezionabili) {
