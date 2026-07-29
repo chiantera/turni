@@ -14,3 +14,17 @@ export function vociNavigazione(): VoceNavigazione[] {
     { href: "/impostazioni", etichetta: "Impostazioni" },
   ]
 }
+
+export function destinazioneDopoAccesso(parametri: {
+  da?: string
+  dal?: string
+  al?: string
+}): string {
+  const { da, dal, al } = parametri
+  if (!da?.startsWith("/") || da.startsWith("//")) return "/"
+  if (!dal && !al) return da
+  const query = new URLSearchParams()
+  if (dal) query.set("dal", dal)
+  if (al) query.set("al", al)
+  return `${da}${da.includes("?") ? "&" : "?"}${query}`
+}

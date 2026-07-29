@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation"
+import { destinazioneDopoAccesso } from "@/lib/dati/navigazione"
 import { creaClientServer } from "@/lib/supabase/server"
 
 export const metadata = { title: "Accedi — Turni" }
@@ -8,9 +9,18 @@ async function accedi(formData: FormData) {
   const sb = await creaClientServer()
   const email = String(formData.get("email") ?? "")
   const password = String(formData.get("password") ?? "")
+  const da = String(formData.get("da") ?? "") || undefined
+  const dal = String(formData.get("dal") ?? "") || undefined
+  const al = String(formData.get("al") ?? "") || undefined
   const { error } = await sb.auth.signInWithPassword({ email, password })
-  if (error) redirect(`/accedi?errore=${encodeURIComponent(error.message)}`)
-  redirect("/")
+  if (error) {
+    const query = new URLSearchParams({ errore: error.message })
+    if (da) query.set("da", da)
+    if (dal) query.set("dal", dal)
+    if (al) query.set("al", al)
+    redirect(`/accedi?${query}`)
+  }
+  redirect(destinazioneDopoAccesso({ da, dal, al }))
 }
 
 async function registrati(formData: FormData) {
@@ -31,7 +41,13 @@ async function registrati(formData: FormData) {
 export default async function PaginaAccedi({
   searchParams,
 }: {
-  searchParams: Promise<{ errore?: string; registra?: string }>
+  searchParams: Promise<{
+    errore?: string
+    registra?: string
+    da?: string
+    dal?: string
+    al?: string
+  }>
 }) {
   const sp = await searchParams
   const modoRegistrazione = sp.registra === "1"
@@ -53,6 +69,13 @@ export default async function PaginaAccedi({
         )}
 
         <form action={modoRegistrazione ? registrati : accedi} className="mt-5 space-y-3">
+          {!modoRegistrazione && (
+            <>
+              <input type="hidden" name="da" value={sp.da ?? ""} />
+              <input type="hidden" name="dal" value={sp.dal ?? ""} />
+              <input type="hidden" name="al" value={sp.al ?? ""} />
+            </>
+          )}
           {modoRegistrazione && (
             <div>
               <label htmlFor="nome" className="text-sm font-medium">
