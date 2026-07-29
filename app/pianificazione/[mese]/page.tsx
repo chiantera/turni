@@ -236,6 +236,8 @@ export default async function Pianificazione({
         <BarraAzioni dal={dal} al={al} esistente={haPiano} />
         {haPiano && oreEccedenti !== null && oreEccedenti > 0 && (
           <DecisioneOreEccedenti
+            dal={dal}
+            al={al}
             oreEccedenti={oreEccedenti}
             numeroLavoratori={lavoratori.data?.length ?? 0}
           />

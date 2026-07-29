@@ -30,6 +30,18 @@ export async function PUT(req: Request) {
       dal || al
         ? validaModificheIntervallo(dal, al, r.modifiche)
         : validaModifichePiano(mese, r.modifiche)
+    const precondizioni =
+      r.precondizioni === undefined
+        ? []
+        : dal || al
+          ? validaModificheIntervallo(dal, al, r.precondizioni)
+          : validaModifichePiano(mese, r.precondizioni)
+    if (r.precondizioni !== undefined && precondizioni.length !== modifiche.length) {
+      return NextResponse.json(
+        { errore: "Le precondizioni devono corrispondere a tutte le modifiche." },
+        { status: 400 },
+      )
+    }
     if (modifiche.length === 0) {
       return NextResponse.json({ salvate: 0 })
     }
@@ -40,7 +52,38 @@ export async function PUT(req: Request) {
     if (piani.error) throw piani.error
     const pianoPerMese = new Map((piani.data ?? []).map((p) => [p.mese, p.id]))
 
-    const workerIds = [...new Set(modifiche.map((m) => m.workerId))]
+    if (precondizioni.length > 0) {
+      const scheduleIds = [...pianoPerMese.values()]
+      const correnti = await sb
+        .from("assignments")
+        .select("data, worker_id, shift_type_id, position_id")
+        .in("schedule_id", scheduleIds)
+        .gte("data", dal || "0000-01-01")
+        .lte("data", al || "9999-12-31")
+      if (correnti.error) throw correnti.error
+      const presenti = new Set(
+        (correnti.data ?? []).map(
+          (assegnazione) =>
+            `${assegnazione.worker_id}:${assegnazione.data}:${assegnazione.shift_type_id}:${assegnazione.position_id}`,
+        ),
+      )
+      const obsoleta = precondizioni.find(
+        (precondizione) =>
+          !precondizione.shiftTypeId ||
+          !precondizione.positionId ||
+          !presenti.has(
+            `${precondizione.workerId}:${precondizione.data}:${precondizione.shiftTypeId}:${precondizione.positionId}`,
+          ),
+      )
+      if (obsoleta) {
+        return NextResponse.json(
+          { errore: "Il piano è cambiato dopo il preview. Ricalcola l'impatto prima di applicare." },
+          { status: 409 },
+        )
+      }
+    }
+
+    const workerIds = [...new Set([...modifiche, ...precondizioni].map((m) => m.workerId))]
     const lavoratori = await sb
       .from("workers")
       .select("id")

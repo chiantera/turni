@@ -55,10 +55,11 @@ modo automatico. Presenta due criteri consultivi:
 - **riduzione concentrata**: meno ore per un gruppo più piccolo di lavoratori;
 - **riduzione distribuita**: una riduzione più piccola condivisa da tutti.
 
-La scelta mostra una stima dell'impatto e non modifica il piano. Prima di
-applicare una politica definitiva devono essere mostrati lavoratori, date,
-copertura residua e trade-off operativi; la selezione casuale non è una politica
-valida.
+La scelta apre un preview con lavoratori, date, turni e ore da rimuovere. Solo
+dopo una conferma esplicita **Applica al piano** le assegnazioni non bloccate e
+ridondanti vengono rimosse tramite il normale percorso di salvataggio. Il
+preview fallisce se il piano è cambiato nel frattempo; la selezione casuale non
+è una politica valida.
 
 ### Pianificazione per intervallo
 
