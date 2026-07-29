@@ -21,6 +21,8 @@ import {
   riepiloghi,
   trovaViolazioni,
 } from "./vincoli"
+export { valutaAssegnabilita } from "./vincoli"
+export type { MotivoAssegnabilita, ValutazioneAssegnabilita } from "./vincoli"
 
 export * from "./tipi"
 export { costruisciModello, PESI_DEFAULT, REGOLE_DEFAULT } from "./modello"

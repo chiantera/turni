@@ -469,6 +469,19 @@ export function valutaAssegnabilita(
   return { consentita: motivi.length === 0, motivi }
 }
 
+function rifiutaMotivo(): boolean {
+  return true
+}
+
+function aggiungiMotivo(
+  motivi: MotivoAssegnabilita[],
+): (motivo: MotivoAssegnabilita) => boolean {
+  return (motivo) => {
+    motivi.push(motivo)
+    return false
+  }
+}
+
 function controllaAssegnabilita(
   m: Modello,
   s: Stato,
@@ -484,10 +497,7 @@ function controllaAssegnabilita(
   const nT = m.turni.length
   const base = lav * nG
 
-  const blocca = (motivo: MotivoAssegnabilita): boolean => {
-    if (motivi) motivi.push(motivo)
-    return motivi === undefined
-  }
+  const blocca = motivi === undefined ? rifiutaMotivo : aggiungiMotivo(motivi)
 
   // 1. Un solo turno al giorno
   if (s.turnoDelGiorno[base + g] !== -1) {

@@ -4,7 +4,7 @@ import { costruisciModello, PESI_DEFAULT, REGOLE_DEFAULT } from "./modello"
 import { scenario } from "./scenari"
 import { verificaFattibilita } from "./fattibilita"
 import type { Vincolo } from "./tipi"
-import { compilaVincoli, creaStato, valutaAssegnabilita } from "./vincoli"
+import { compilaVincoli, creaStato, puoAssegnare, valutaAssegnabilita } from "./vincoli"
 
 const ORA = 3_600_000
 
@@ -869,6 +869,9 @@ describe("spiegazione dell'assegnabilità", () => {
     )
 
     expect(valutazione.consentita).toBe(false)
+    expect(valutazione.consentita).toBe(
+      puoAssegnare(modello, stato, vincoli, slot!.idx, 0),
+    )
     expect(valutazione.motivi).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ codice: "assenza", rilassabile: false }),
