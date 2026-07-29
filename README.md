@@ -46,6 +46,20 @@ il piano.
 Un modello linguistico che producesse direttamente la griglia non potrebbe
 garantire copertura, monte ore o riposi, e non sarebbe riproducibile.
 
+### Ore contrattuali eccedenti
+
+Quando la copertura è completa ma la capacità contrattuale supera le ore dei
+turni richiesti, la schermata di pianificazione non riduce le assegnazioni in
+modo automatico. Presenta due criteri consultivi:
+
+- **riduzione concentrata**: meno ore per un gruppo più piccolo di lavoratori;
+- **riduzione distribuita**: una riduzione più piccola condivisa da tutti.
+
+La scelta mostra una stima dell'impatto e non modifica il piano. Prima di
+applicare una politica definitiva devono essere mostrati lavoratori, date,
+copertura residua e trade-off operativi; la selezione casuale non è una politica
+valida.
+
 ### Pianificazione per intervallo
 
 La schermata **Pianifica** usa un intervallo di date inclusivo. Il pianificatore

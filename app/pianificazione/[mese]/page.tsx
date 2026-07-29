@@ -18,6 +18,7 @@ import { primoDelMese } from "@/lib/solver/tempo"
 import { creaClientServer } from "@/lib/supabase/server"
 import type { Tables } from "@/lib/supabase/types"
 import BarraAzioni from "./BarraAzioni"
+import DecisioneOreEccedenti from "./DecisioneOreEccedenti"
 import SelettoreIntervallo from "./SelettoreIntervallo"
 import SuggerimentiAI from "./SuggerimentiAI"
 import TabellaPianoInterattiva from "./TabellaPianoInterattiva"
@@ -178,6 +179,15 @@ export default async function Pianificazione({
   const festivi = (festivita.data ?? []).map((f) => f.data)
   const bloccanti = violazioni.filter((v) => v.gravita === "bloccante")
   const altre = violazioni.filter((v) => v.gravita !== "bloccante")
+  const capacitaEccedente = violazioni.find((v) => v.tipo === "capacita_eccedente")
+  const riferimentiCapacita = capacitaEccedente?.riferimenti
+  const oreEccedenti =
+    riferimentiCapacita !== null &&
+    typeof riferimentiCapacita === "object" &&
+    !Array.isArray(riferimentiCapacita) &&
+    typeof riferimentiCapacita.oreEccedenti === "number"
+      ? riferimentiCapacita.oreEccedenti
+      : null
   const meseCompleto =
     mesi.length === 1 && dal === mesi[0] && al === fineDelMese(dal)
   const titolo = meseCompleto
@@ -224,6 +234,12 @@ export default async function Pianificazione({
 
         <SelettoreIntervallo key={`${dal}:${al}`} dal={dal} al={al} />
         <BarraAzioni dal={dal} al={al} esistente={haPiano} />
+        {haPiano && oreEccedenti !== null && oreEccedenti > 0 && (
+          <DecisioneOreEccedenti
+            oreEccedenti={oreEccedenti}
+            numeroLavoratori={lavoratori.data?.length ?? 0}
+          />
+        )}
 
         {(bloccanti.length > 0 || altre.length > 0) && (
           <section className="scheda space-y-3 p-4">
