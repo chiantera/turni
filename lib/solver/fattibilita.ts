@@ -37,8 +37,24 @@ export interface Fattibilita {
   avvisi: string[]
 }
 
+/**
+ * Tolleranza sotto la quale uno scarto di ore va considerato nullo.
+ *
+ * Domanda e capacità si calcolano entrambe con divisioni per 7, quindi in
+ * virgola mobile non tornano mai al bit: lo scenario di riferimento
+ * (7 lavoratori x 38h contro 31 giorni x 38h) produce un residuo di -2e-13 ore.
+ * Senza normalizzazione `Math.ceil` lo arrotonda per eccesso e l'applicazione
+ * annuncia che manca una persona per un ammanco di un nanosecondo.
+ *
+ * Un minuto e' una soglia onesta: sotto quel valore nessun piano cambia.
+ */
+const EPSILON_ORE = 1 / 60
+
 export function verificaFattibilita(m: Modello): Fattibilita {
-  const giorniPeriodo = m.nGiorni - m.offsetPeriodo
+  // Solo l'intervallo scrivibile. I giorni di contesto — prima e dopo —
+  // vincolano i riposi ma non sono assegnabili: contarli come capacità
+  // disponibile gonfia il monte ore di una settimana intera di organico.
+  const giorniPeriodo = m.fineOffsetPeriodo - m.offsetPeriodo
   const settimane = giorniPeriodo / 7
 
   // --- Fabbisogno per turno ------------------------------------------------
@@ -83,14 +99,21 @@ export function verificaFattibilita(m: Modello): Fattibilita {
     oreDisponibili += oreNominali - perse
   }
 
-  const scarto = oreDisponibili - oreRichieste
+  const scartoGrezzo = oreDisponibili - oreRichieste
+  // Da qui in poi si usa SEMPRE il valore normalizzato: `ok`, avvisi e
+  // organico mancante devono raccontare la stessa storia.
+  const scarto = Math.abs(scartoGrezzo) < EPSILON_ORE ? 0 : scartoGrezzo
+
   const oreMediePersona =
     m.lavoratori.length > 0
       ? (m.lavoratori.reduce((a, l) => a + l.oreSettimanali, 0) /
           m.lavoratori.length) *
         settimane
       : 38 * settimane
-  const personeMancanti = scarto >= 0 ? 0 : Math.ceil(-scarto / oreMediePersona)
+  const personeMancanti =
+    scarto >= 0 || oreMediePersona <= 0
+      ? 0
+      : Math.ceil(-scarto / oreMediePersona)
 
   const perTurno = [...perTurnoMap.values()]
   for (const v of perTurno) {

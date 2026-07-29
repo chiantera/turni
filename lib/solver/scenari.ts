@@ -58,6 +58,7 @@ export interface OpzioniScenario {
   vincoli?: Vincolo[]
   riposoDopoNotteH?: number
   giorniContesto?: number
+  giorniContestoDopo?: number
 }
 
 export function scenario(o: OpzioniScenario = {}): DatiIngresso {
@@ -111,5 +112,6 @@ export function scenario(o: OpzioniScenario = {}): DatiIngresso {
     pesi: PESI_DEFAULT,
     regole: REGOLE_DEFAULT,
     giorniContesto: o.giorniContesto ?? 7,
+    giorniContestoDopo: o.giorniContestoDopo ?? 0,
   }
 }

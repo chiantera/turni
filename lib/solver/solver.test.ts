@@ -235,6 +235,38 @@ describe("scenario B — organico insufficiente", () => {
   })
 })
 
+describe("contabilità della fattibilità", () => {
+  it("ignora il contesto futuro nella fattibilità", () => {
+    // I giorni di contesto successivi al periodo servono solo a far rispettare
+    // i riposi oltre la data finale: sono di sola lettura e nessuno ci verrà
+    // assegnato. Contarli come capacità disponibile gonfia il monte ore e fa
+    // sembrare sufficiente un organico che non lo è.
+    const senza = verificaFattibilita(
+      costruisciModello(scenario({ giorniContestoDopo: 0 })),
+    )
+    const con = verificaFattibilita(
+      costruisciModello(scenario({ giorniContestoDopo: 7 })),
+    )
+
+    expect(con.oreDisponibili).toBeCloseTo(senza.oreDisponibili, 9)
+    expect(con.scartoOre).toBeCloseTo(senza.scartoOre, 9)
+    expect(con.personeMancanti).toBe(senza.personeMancanti)
+  })
+
+  it("non trasforma un residuo in virgola mobile in una persona mancante", () => {
+    // Lo scenario di riferimento ha domanda e capacità ESATTAMENTE uguali:
+    // 7 lavoratori x 38h contro 31 giorni x 38h. In virgola mobile
+    // 38 * 31 / 7 * 7 non torna a 1178 al bit, e un residuo di 1e-13 ore
+    // basta a far dichiarare "manca 1 persona" — Math.ceil arrotonda per
+    // eccesso qualunque cosa, anche un miliardesimo di secondo.
+    const f = verificaFattibilita(costruisciModello(scenario()))
+
+    expect(Math.abs(f.scartoOre)).toBeLessThan(1 / 60)
+    expect(f.personeMancanti).toBe(0)
+    expect(f.avvisi.join(" ")).not.toContain("Organico insufficiente")
+  })
+})
+
 describe("verifica del mix (2:2:1 contro 1:1:1)", () => {
   it("segnala lo sbilanciamento quando serve 1 persona per turno", () => {
     // Con copertura 1/1/1 il monte ore può tornare ma le notti sono troppe
