@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { createHash } from "node:crypto"
 
 import {
   ErroreIntervalloPianificazione,
@@ -7,6 +8,8 @@ import {
 import { caricaDatiSolver, salvaIntervalloPiani } from "@/lib/dati/piano"
 import { ErroreCoperturaAmbigua } from "@/lib/solver/modello"
 import { estraiAssegnazioni, generaPiano } from "@/lib/solver"
+import { serializzaDatiPerImpronta } from "@/lib/solver/serializzazione"
+import { snapshotDaEsito } from "@/lib/solver/snapshot"
 import { ePianificatore } from "@/lib/supabase/server"
 
 // Il solver è puro calcolo su CPU: serve il runtime Node, non l'edge.
@@ -60,6 +63,16 @@ export async function POST(req: Request) {
 
     const esito = generaPiano(dati, { seme, tempoMaxMs })
     const assegnazioni = estraiAssegnazioni(esito.modello, esito.stato)
+    const improntaInput = createHash("sha256")
+      .update(serializzaDatiPerImpronta(dati))
+      .digest("hex")
+    const diagnostica = snapshotDaEsito(
+      esito,
+      { dal: intervallo.dal, al: intervallo.al },
+      improntaInput,
+      seme,
+      tempoMaxMs,
+    )
 
     await salvaIntervalloPiani(
       intervallo.dal,
@@ -71,6 +84,7 @@ export async function POST(req: Request) {
         scoperti: esito.slotScoperti,
         iterazioni: esito.iterazioni,
         tempoMs: esito.tempoMs,
+        diagnostica,
       },
       seme,
     )
