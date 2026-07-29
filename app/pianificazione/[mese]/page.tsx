@@ -62,7 +62,7 @@ export default async function Pianificazione({
   const mesi = mesiIntervallo(dal, al)
 
   const sb = await creaClientServer()
-  const [piani, lavoratori, postazioni, turni, festivita, abilitazioni] =
+  const [piani, lavoratori, postazioni, turni, festivita, abilitazioni, assenze] =
     await Promise.all([
       sb.from("schedules").select("*").in("mese", mesi).order("mese"),
       sb.from("workers").select("*").eq("attivo", true).order("cognome"),
@@ -74,9 +74,23 @@ export default async function Pianificazione({
         .order("ordine_rotazione"),
       sb.from("holidays").select("*").gte("data", dal).lte("data", al),
       sb.from("worker_positions").select("*"),
+      sb
+        .from("absences")
+        .select("*")
+        .lte("dal", al)
+        .gte("al", dal)
+        .order("dal"),
     ])
 
-  for (const risultato of [piani, lavoratori, postazioni, turni, festivita, abilitazioni]) {
+  for (const risultato of [
+    piani,
+    lavoratori,
+    postazioni,
+    turni,
+    festivita,
+    abilitazioni,
+    assenze,
+  ]) {
     if (risultato.error) throw risultato.error
   }
 
@@ -235,6 +249,7 @@ export default async function Pianificazione({
             postazioni={postazioni.data ?? []}
             abilitazioni={abilitazioni.data ?? []}
             assegnazioni={assegnazioni}
+            assenze={assenze.data ?? []}
           />
         )}
       </main>

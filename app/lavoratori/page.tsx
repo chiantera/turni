@@ -2,7 +2,12 @@ import { revalidatePath } from "next/cache"
 
 import Navigazione from "@/app/componenti/Navigazione"
 import { dataEstesa } from "@/lib/dati/formato"
+import {
+  assenzaCompatibileConSchemaPrecedente,
+  statoCellaLavoratore,
+} from "@/lib/dati/stato-cella-piano"
 import { creaClientServer } from "@/lib/supabase/server"
+import type { Enums } from "@/lib/supabase/types"
 
 export const metadata = { title: "Lavoratori — Turni" }
 export const dynamic = "force-dynamic"
@@ -68,14 +73,26 @@ async function aggiorna(formData: FormData) {
 async function aggiungiAssenza(formData: FormData) {
   "use server"
   const sb = await creaClientServer()
-  await sb.from("absences").insert({
+  const tipo = String(formData.get("tipo")) as Enums<"tipo_assenza">
+  const nuovaAssenza = {
     worker_id: String(formData.get("worker_id")),
     dal: String(formData.get("dal")),
     al: String(formData.get("al")),
-    tipo: String(formData.get("tipo")) as "ferie",
+    tipo,
     giornata_intera: true,
-  })
+  }
+  const inserimento = await sb.from("absences").insert(nuovaAssenza)
+  if (
+    inserimento.error?.code === "22P02" &&
+    (tipo === "disciplinare" || tipo === "studio")
+  ) {
+    await sb.from("absences").insert({
+      ...nuovaAssenza,
+      ...assenzaCompatibileConSchemaPrecedente(tipo),
+    })
+  }
   revalidatePath("/lavoratori")
+  revalidatePath("/pianificazione/[mese]", "page")
 }
 
 async function rimuoviAssenza(formData: FormData) {
@@ -83,6 +100,7 @@ async function rimuoviAssenza(formData: FormData) {
   const sb = await creaClientServer()
   await sb.from("absences").delete().eq("id", String(formData.get("id")))
   revalidatePath("/lavoratori")
+  revalidatePath("/pianificazione/[mese]", "page")
 }
 
 export default async function Lavoratori() {
@@ -260,7 +278,14 @@ export default async function Lavoratori() {
                     <ul className="space-y-1 mb-3">
                       {ass.map((a) => (
                         <li key={a.id} className="flex items-center gap-3 text-sm">
-                          <span className="capitalize">{a.tipo}</span>
+                          <span>
+                            {statoCellaLavoratore({
+                              workerId: a.worker_id,
+                              data: a.dal,
+                              assegnazionePresente: false,
+                              assenze: [a],
+                            })?.etichetta ?? a.tipo}
+                          </span>
                           <span className="text-tenue">
                             dal {dataEstesa(a.dal)} al {dataEstesa(a.al)}
                           </span>
@@ -295,6 +320,8 @@ export default async function Lavoratori() {
                       <select name="tipo" className="campo mt-1">
                         <option value="ferie">Ferie</option>
                         <option value="malattia">Malattia</option>
+                        <option value="disciplinare">Disciplinare</option>
+                        <option value="studio">Permesso per studiare</option>
                         <option value="permesso">Permesso</option>
                         <option value="l104">Legge 104</option>
                         <option value="formazione">Formazione</option>

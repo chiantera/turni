@@ -497,6 +497,8 @@ export type Database = {
       tipo_assenza:
         | "ferie"
         | "malattia"
+        | "disciplinare"
+        | "studio"
         | "permesso"
         | "l104"
         | "formazione"

@@ -25,6 +25,10 @@ import {
   lavoratoriCellaPostazione,
   type AssegnazioneModificabile,
 } from "@/lib/dati/modifiche-piano"
+import {
+  STATI_CELLA_LAVORATORE,
+  statoCellaLavoratore,
+} from "@/lib/dati/stato-cella-piano"
 import { giornoSettimana } from "@/lib/solver/tempo"
 import type { Tables } from "@/lib/supabase/types"
 
@@ -39,6 +43,7 @@ interface Props {
   postazioni: Tables<"positions">[]
   abilitazioni: Tables<"worker_positions">[]
   assegnazioni: Tables<"assignments">[]
+  assenze: Tables<"absences">[]
 }
 
 type Editor =
@@ -75,6 +80,7 @@ export default function TabellaPianoInterattiva({
   postazioni,
   abilitazioni,
   assegnazioni,
+  assenze,
 }: Props) {
   const router = useRouter()
   const inizialiDaServer = useMemo<AssegnazioneModificabile[]>(
@@ -140,6 +146,15 @@ export default function TabellaPianoInterattiva({
     }
     return m
   }, [abilitazioni])
+  const assenzePerLavoratore = useMemo(() => {
+    const m = new Map<string, Tables<"absences">[]>()
+    for (const assenza of assenze) {
+      const correnti = m.get(assenza.worker_id) ?? []
+      correnti.push(assenza)
+      m.set(assenza.worker_id, correnti)
+    }
+    return m
+  }, [assenze])
   const legenda = useMemo(
     () => creaLegendaPiano(postazioni, turni),
     [postazioni, turni],
@@ -482,6 +497,15 @@ export default function TabellaPianoInterattiva({
                         const t = a?.shiftTypeId ? turnoPerId.get(a.shiftTypeId) : null
                         const p = a?.positionId ? postazionePerId.get(a.positionId) : null
                         const aspetto = a ? aspettoCellaPiano(a, postazioni, turni) : null
+                        const stato = statoCellaLavoratore({
+                          workerId: l.id,
+                          data: g,
+                          assegnazionePresente: Boolean(a),
+                          assenze: assenzePerLavoratore.get(l.id) ?? [],
+                        })
+                        const turnoAssenza = stato?.shiftTypeId
+                          ? turnoPerId.get(stato.shiftTypeId)
+                          : null
                         const cambiata =
                           a?.shiftTypeId !== iniziale?.shiftTypeId ||
                           a?.positionId !== iniziale?.positionId
@@ -490,24 +514,32 @@ export default function TabellaPianoInterattiva({
                         return (
                           <td
                             key={g}
-                            className={`relative border-b border-bordo text-center p-0.5 ${speciale && !t ? "bg-avviso-tenue/40" : ""}`}
+                            className={`relative border-b border-bordo text-center p-0.5 ${speciale && !a ? "bg-avviso-tenue/40" : ""}`}
                           >
                             <button
                               type="button"
                               disabled={inSalvataggio}
                               onClick={() => apriLavoratore(l.id, g)}
                               className="group relative grid h-7 w-full min-w-8 place-items-center rounded hover:bg-accento-tenue focus:outline-none focus:ring-2 focus:ring-accento"
-                              title={t ? `${t.nome} · ${p?.nome ?? ""} · clicca per modificare` : "Riposo · clicca per assegnare"}
+                              title={
+                                a
+                                  ? `${t?.nome ?? "Turno non disponibile"} · ${p?.nome ?? "Postazione non disponibile"} · clicca per modificare`
+                                  : `${stato?.etichetta ?? "Riposo"}${turnoAssenza ? ` · ${turnoAssenza.nome}` : ""} · clicca per assegnare`
+                              }
                             >
-                              {t ? (
+                              {a ? (
                                 <span
                                   className="inline-block h-6 w-6 rounded text-xs font-medium leading-6 text-white shadow-sm transition-transform group-hover:scale-110"
                                   style={{ backgroundColor: aspetto?.colore ?? undefined }}
                                 >
-                                  {aspetto?.codice}
+                                  {aspetto?.codice ?? "?"}
                                 </span>
                               ) : (
-                                <span className="text-bordo transition-colors group-hover:text-accento">·</span>
+                                <span
+                                  className={`inline-grid h-6 min-w-6 place-items-center rounded border border-bordo bg-superficie px-0.5 text-xs transition-colors group-hover:border-accento group-hover:text-accento ${stato?.assenza ? "font-medium text-testo" : "text-tenue"}`}
+                                >
+                                  {stato?.codice ?? "R"}
+                                </span>
                               )}
                               {cambiata && (
                                 <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-avviso" />
@@ -630,6 +662,19 @@ export default function TabellaPianoInterattiva({
                     {turno.codice}
                   </span>
                   {turno.nome} {turno.oraInizio}–{turno.oraFine} ({(turno.durataMin / 60).toString().replace(".", ",")}h)
+                </span>
+              ))}
+            </div>
+          )}
+          {vista === "lavoratore" && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-bordo pt-2.5">
+              <span className="min-w-20 font-medium">Stati</span>
+              {STATI_CELLA_LAVORATORE.map((stato) => (
+                <span key={stato.tipo} className="flex items-center gap-1.5 text-tenue">
+                  <span className="inline-grid h-5 min-w-5 place-items-center rounded border border-bordo bg-superficie px-0.5 text-xs font-medium text-testo">
+                    {stato.codice}
+                  </span>
+                  {stato.etichetta}
                 </span>
               ))}
             </div>

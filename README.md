@@ -94,6 +94,14 @@ nomi, orari di inizio/fine e durata dei turni. Salvare una modifica in
 **Postazioni** o **Turni** invalida le pagine di pianificazione, così la legenda
 viene ricostruita con i nuovi valori alla visita successiva.
 
+Nella vista **per lavoratore**, una cella senza turno non resta più vuota: mostra
+**R** per riposo, **F** per ferie, **🤒** per malattia, **D** per disciplinare,
+**📚** per permesso per studiare e **A** per altro. Lo stato deriva dalle assenze
+che includono quella data; se più assenze si sovrappongono, quella giornaliera
+ha precedenza su quella legata a un solo turno. Un'assegnazione presente conserva
+invece la rappresentazione principale con colore della postazione e codice del
+turno. La legenda **Stati** documenta i simboli direttamente sotto il piano.
+
 - nella vista **per lavoratore**, un clic sulla cella giorno/lavoratore apre
   l'editor per cambiare turno e postazione oppure impostare il riposo;
 - nella vista **per postazione**, un clic sulla cella giorno/postazione/turno
@@ -434,6 +442,14 @@ The legend is generated from current data: position names and colors, plus
 shift codes, names, start/end times, and duration. Saving a change under
 **Positions** or **Shifts** invalidates the planning pages, so the legend is
 rebuilt with the updated values on the next visit.
+
+In the **by worker** view, a cell without an assigned shift is no longer blank:
+it shows **R** for rest, **F** for holiday leave, **🤒** for sickness, **D** for
+disciplinary leave, **📚** for study leave, and **A** for other. The state is
+derived from absences that include that date; when records overlap, a whole-day
+absence takes precedence over one tied to a specific shift. An existing
+assignment keeps the primary position-color and shift-code representation. The
+**States** legend documents these symbols directly below the schedule.
 
 - in the **by worker** view, clicking a worker/day cell opens an editor to
   change the shift and position or mark the day as rest;
