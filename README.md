@@ -51,13 +51,36 @@ garantire copertura, monte ore o riposi, e non sarebbe riproducibile.
 La schermata **Pianifica** usa un intervallo di date inclusivo. Il pianificatore
 può aprire il mese corrente, visualizzare due mesi completi insieme oppure
 impostare qualsiasi data iniziale e finale fino a 366 giorni. Griglia, conteggi,
-fattibilità, solver, segnalazioni AI ed esportazione Excel lavorano sullo stesso
-intervallo, anche quando attraversa un cambio di mese o di anno.
+fattibilità, solver, segnalazioni AI ed esportazioni Excel e ICS lavorano sullo
+stesso intervallo, anche quando attraversa un cambio di mese o di anno.
+
+L'URL canonico usa parametri ISO `dal` e `al`, entrambi inclusivi:
+
+```text
+/pianificazione/2026-08-01?dal=2026-08-20&al=2026-10-05
+```
+
+Senza parametri, `/pianificazione/[mese]` continua a rappresentare l'intero
+mese indicato, mantenendo compatibili collegamenti e segnalibri esistenti. Se
+l'utente deve autenticarsi, la destinazione e l'intervallo selezionato vengono
+conservati dopo l'accesso.
 
 I piani restano archiviati in record mensili compatibili con i dati esistenti,
 ma l'interfaccia li combina in un'unica bozza. Generare un intervallo aggiorna
 solo le date selezionate nei mesi coinvolti e conserva le assegnazioni esterne
 all'intervallo nei mesi iniziale e finale.
+
+Il solver carica sette giorni di contesto immutabile prima di `dal` e dopo `al`:
+in questo modo riposi minimi e giorni consecutivi restano validi anche ai bordi
+dell'intervallo. Le segnalazioni datate esterne all'intervallo non vengono
+mostrate come parte della nuova generazione; quelle complessive sono associate
+alla coppia `dal`/`al` che le ha prodotte.
+
+Il salvataggio inserisce o aggiorna le nuove assegnazioni prima di eliminare le
+righe diventate obsolete. Una lettura Supabase incompleta interrompe la
+generazione invece di essere interpretata come un insieme di dati vuoto. Le
+operazioni su più mesi non sono tuttavia una singola transazione PostgreSQL: per
+una garanzia strettamente atomica fra tutti i mesi servirà una RPC transazionale.
 
 ### Modifica manuale e salvataggio del piano
 
@@ -229,6 +252,10 @@ npm run build
 npm run typecheck
 ```
 
+```bash
+npm run lint
+```
+
 ## Struttura
 
 ```
@@ -313,13 +340,35 @@ contract hours, or legal rest periods, and its result would not be reproducible.
 The **Planning** screen uses an inclusive date range. A planner can open the
 current month, view two complete months together, or choose any start and end
 date up to 366 days. The grid, totals, feasibility checks, solver, AI
-diagnostics, and Excel export all use that same range, including month and year
-boundaries.
+diagnostics, and Excel and ICS exports all use that same range, including month
+and year boundaries.
+
+The canonical URL uses inclusive ISO `dal` and `al` parameters:
+
+```text
+/pianificazione/2026-08-01?dal=2026-08-20&al=2026-10-05
+```
+
+Without those parameters, `/pianificazione/[mese]` continues to represent the
+complete named month, preserving existing links and bookmarks. When
+authentication is required, the destination and selected range survive the
+login flow.
 
 Schedules remain stored in backward-compatible monthly records, while the UI
 combines them into one draft. Generating a range replaces only its selected
 dates in each affected month and preserves assignments outside the range in the
 first and last months.
+
+The solver loads seven immutable context days before `dal` and after `al`, so
+minimum-rest and consecutive-day constraints remain valid at both boundaries.
+Dated diagnostics outside the range are not presented as part of the new run;
+range-wide diagnostics are scoped to the `dal`/`al` pair that produced them.
+
+Persistence upserts replacement assignments before removing obsolete rows. An
+incomplete Supabase read aborts generation instead of being interpreted as an
+empty dataset. Multi-month writes are not yet one PostgreSQL transaction,
+however; strict all-or-nothing atomicity across every month would require a
+transactional RPC.
 
 ### Manual schedule editing and persistence
 
@@ -483,7 +532,7 @@ npm run lint      # ESLint
 
 ```
 app/
-  pianificazione/[mese]/   main grid, generation, and diagnostics
+  pianificazione/[mese]/   grid and inclusive range via dal/al query parameters
   vincoli/                 constraints and natural-language assistant
   lavoratori|postazioni|turni|copertura|impostazioni/
   api/piano/genera         invoke the solver and save a schedule
