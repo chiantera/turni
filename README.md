@@ -176,6 +176,13 @@ autunno). La distinzione è deliberata:
 `provider.ts` è un registro: cambiare modello significa cambiare una variabile
 d'ambiente, senza toccare il codice.
 
+> **Confine di prodotto:** selettore, nomi di provider/modelli, stato delle
+> chiavi, latenza e strumenti di prova sono diagnostica interna utile durante lo
+> sviluppo. Non fanno parte dell'esperienza destinata agli utenti finali. In
+> produzione il team sceglie provider e modello lato server in base a costo,
+> qualità, affidabilità e velocità; l'interfaccia utente espone soltanto la
+> funzione assistita e il suo risultato.
+
 | Provider | Variabile | Modello di default | Verificato |
 |---|---|---|---|
 | GLM (Z.ai) | `GLM_API_KEY` | `glm-4.7-flash` | 6/6 |
@@ -485,6 +492,13 @@ real hours. The distinction is intentional:
 
 `provider.ts` is a provider registry. A model can be changed through environment
 variables without modifying application code.
+
+> **Product boundary:** provider/model selectors and names, API-key status,
+> latency, and connection-test tooling are internal diagnostics that are useful
+> while building the application. They are not part of the end-user experience.
+> In production, the team selects the server-side provider and model according
+> to cost, quality, reliability, and speed; the user interface exposes only the
+> assisted task and its result.
 
 | Provider | Environment variable | Default model | Verified |
 |---|---|---|---|
