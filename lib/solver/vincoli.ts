@@ -953,7 +953,10 @@ export function trovaViolazioni(
   }
 
   // --- Slot scoperti (raggruppati per giorno/turno/postazione) -------------
-  const scoperti = new Map<string, { data: string; post: string; turno: string; n: number }>()
+  const scoperti = new Map<
+    string,
+    { data: string; postazioneIdx: number; turnoIdx: number; n: number }
+  >()
   for (const sl of m.slots) {
     if (s.assegnatoA[sl.idx] !== -1) continue
     const k = `${sl.data}:${sl.postazioneIdx}:${sl.turnoIdx}`
@@ -962,8 +965,8 @@ export function trovaViolazioni(
     else
       scoperti.set(k, {
         data: sl.data,
-        post: m.postazioni[sl.postazioneIdx].nome,
-        turno: m.turni[sl.turnoIdx].nome,
+        postazioneIdx: sl.postazioneIdx,
+        turnoIdx: sl.turnoIdx,
         n: 1,
       })
   }
@@ -971,10 +974,12 @@ export function trovaViolazioni(
     const slot = m.slots.find(
       (sl) =>
         sl.data === v.data &&
-        m.postazioni[sl.postazioneIdx].nome === v.post &&
-        m.turni[sl.turnoIdx].nome === v.turno &&
+        sl.postazioneIdx === v.postazioneIdx &&
+        sl.turnoIdx === v.turnoIdx &&
         s.assegnatoA[sl.idx] === -1,
     )
+    const postazione = m.postazioni[v.postazioneIdx]
+    const turno = m.turni[v.turnoIdx]
     const blocker = new Map<
       string,
       { codice: string; conteggio: number; vincoloIds: string[] }
@@ -1003,11 +1008,15 @@ export function trovaViolazioni(
       tipo: "copertura",
       gravita: "bloccante",
       data: v.data,
-      messaggio: `${v.data}: mancano ${v.n} persone su "${v.post}" nel turno ${v.turno}.`,
+      messaggio: `${v.data}: mancano ${v.n} persone su "${postazione.nome}" nel turno ${turno.nome}.`,
       riferimenti: {
-        slotKey: `${v.data}:${v.post}:${v.turno}`,
-        postazione: v.post,
-        turno: v.turno,
+        slotKey: `${v.data}:${postazione.id}:${turno.id}`,
+        postazioneId: postazione.id,
+        turnoId: turno.id,
+        postazioneIdx: v.postazioneIdx,
+        turnoIdx: v.turnoIdx,
+        postazione: postazione.nome,
+        turno: turno.nome,
         mancanti: v.n,
         blocker: [...blocker.values()],
       },

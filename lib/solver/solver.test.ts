@@ -944,4 +944,22 @@ describe("classificazione diagnostica", () => {
       ]),
     )
   })
+
+  it("mantiene riferimenti stabili con nomi duplicati", () => {
+    const dati = scenario({ nPostazioni: 2, nLavoratori: 1 })
+    dati.postazioni[1].nome = dati.postazioni[0].nome
+    const esito = generaPiano(dati, { seme: 1, tempoMaxMs: 0 })
+    const coperture = esito.violazioni.filter((v) => v.tipo === "copertura")
+
+    expect(coperture.length).toBeGreaterThan(0)
+    for (const violazione of coperture) {
+      expect(violazione.riferimenti).toMatchObject({
+        postazioneId: expect.stringMatching(/^p-[01]$/),
+        turnoId: expect.stringMatching(/^t-/),
+      })
+      expect(String(violazione.riferimenti?.slotKey)).toContain(
+        String(violazione.riferimenti?.postazioneId),
+      )
+    }
+  })
 })
