@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
 
-import { destinazioneDopoAccesso, vociNavigazione } from "./navigazione"
+import {
+  azioniIntestazioneLavoratore,
+  azioniIntestazionePostazione,
+  destinazioneDopoAccesso,
+  vociNavigazione,
+} from "./navigazione"
 
 describe("menu principale", () => {
   it("lascia Pianifica fuori dal menu perché resta visibile nella barra", () => {
@@ -30,5 +35,26 @@ describe("destinazione dopo l'accesso", () => {
   it("rifiuta redirect verso domini esterni", () => {
     expect(destinazioneDopoAccesso({ da: "https://example.com" })).toBe("/")
     expect(destinazioneDopoAccesso({ da: "//example.com" })).toBe("/")
+  })
+})
+
+describe("azioni delle intestazioni del piano", () => {
+  it("collega un lavoratore ai suoi dati e al riepilogo", () => {
+    expect(azioniIntestazioneLavoratore("worker-1")).toEqual([
+      { etichetta: "Dati lavoratore", href: "/lavoratori#lavoratore-worker-1" },
+      { etichetta: "Riepilogo", href: "/riepilogo" },
+    ])
+  })
+
+  it("collega postazione e turno alle relative configurazioni", () => {
+    expect(azioniIntestazionePostazione("position-1", "shift-1")).toEqual([
+      { etichetta: "Dati postazione", href: "/postazioni#postazione-position-1" },
+      { etichetta: "Dati turno", href: "/turni#turno-shift-1" },
+      {
+        etichetta: "Copertura",
+        href: "/copertura#copertura-position-1-shift-1",
+      },
+      { etichetta: "Riepilogo", href: "/riepilogo" },
+    ])
   })
 })

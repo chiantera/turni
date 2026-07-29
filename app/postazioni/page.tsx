@@ -95,9 +95,10 @@ export default async function Postazioni() {
         <div className="space-y-3">
           {(data ?? []).map((p) => (
             <form
+              id={`postazione-${p.id}`}
               key={p.id}
               action={aggiorna}
-              className={`scheda p-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto_auto] items-end ${
+              className={`scheda scroll-mt-4 p-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto_auto] items-end target:ring-2 target:ring-accento ${
                 p.attiva ? "" : "opacity-50"
               }`}
             >

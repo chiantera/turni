@@ -156,7 +156,11 @@ export default async function Copertura() {
                   </thead>
                   <tbody>
                     {(turni.data ?? []).map((t) => (
-                      <tr key={t.id} className="border-t border-bordo">
+                      <tr
+                        id={`copertura-${p.id}-${t.id}`}
+                        key={t.id}
+                        className="scroll-mt-4 border-t border-bordo target:bg-accento-tenue target:outline target:outline-2 target:outline-accento"
+                      >
                         <td className="px-4 py-2 whitespace-nowrap">
                           <span
                             className="inline-block w-5 h-5 leading-5 rounded text-center text-white text-xs font-medium mr-2"

@@ -123,8 +123,9 @@ function RigaTurno({
   const nuovo = turno === null
   return (
     <form
+      id={turno ? `turno-${turno.id}` : undefined}
       action={salva}
-      className={`scheda p-4 grid gap-3 lg:grid-cols-[5rem_1fr_7rem_7rem_5rem_6rem_auto_auto] items-end ${
+      className={`scheda scroll-mt-4 p-4 grid gap-3 lg:grid-cols-[5rem_1fr_7rem_7rem_5rem_6rem_auto_auto] items-end target:ring-2 target:ring-accento ${
         turno && !turno.attivo ? "opacity-50" : ""
       }`}
     >

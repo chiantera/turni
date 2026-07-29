@@ -3,6 +3,44 @@ export interface VoceNavigazione {
   etichetta: string
 }
 
+export interface AzioneIntestazionePiano {
+  etichetta: string
+  href: string
+}
+
+export function azioniIntestazioneLavoratore(
+  workerId: string,
+): AzioneIntestazionePiano[] {
+  return [
+    {
+      etichetta: "Dati lavoratore",
+      href: `/lavoratori#lavoratore-${encodeURIComponent(workerId)}`,
+    },
+    { etichetta: "Riepilogo", href: "/riepilogo" },
+  ]
+}
+
+export function azioniIntestazionePostazione(
+  positionId: string,
+  shiftTypeId: string,
+): AzioneIntestazionePiano[] {
+  return [
+    {
+      etichetta: "Dati postazione",
+      href: `/postazioni#postazione-${encodeURIComponent(positionId)}`,
+    },
+    {
+      etichetta: "Dati turno",
+      href: `/turni#turno-${encodeURIComponent(shiftTypeId)}`,
+    },
+    {
+      etichetta: "Copertura",
+      href: `/copertura#copertura-${encodeURIComponent(positionId)}-${encodeURIComponent(shiftTypeId)}`,
+    },
+    { etichetta: "Riepilogo", href: "/riepilogo" },
+  ]
+}
+
 export function vociNavigazione(): VoceNavigazione[] {
   return [
     { href: "/riepilogo", etichetta: "Riepilogo" },

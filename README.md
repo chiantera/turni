@@ -102,6 +102,9 @@ viene ricostruita con i nuovi valori alla visita successiva.
 - le celle modificate sono segnalate senza alterare i colori del piano;
 - le due viste condividono lo stesso piano in memoria: passando da una vista
   all'altra si vedono subito le stesse modifiche;
+- un clic sul nome di un lavoratore o sull'intestazione postazione/turno apre
+  collegamenti contestuali ai dati corrispondenti, alla copertura e al
+  riepilogo;
 - **Salva modifiche** scrive in Supabase solo le celle cambiate, mentre
   **Annulla** ripristina l'ultimo stato salvato.
 
@@ -390,6 +393,8 @@ rebuilt with the updated values on the next visit.
 - changed cells are indicated without replacing the schedule's color coding;
 - both views share the same in-memory schedule, so switching views immediately
   shows the same changes;
+- clicking a worker name or a position/shift row header opens contextual links
+  to the corresponding records, coverage, and overview;
 - **Save changes** persists only changed cells to Supabase, while **Cancel**
   restores the last saved state.
 

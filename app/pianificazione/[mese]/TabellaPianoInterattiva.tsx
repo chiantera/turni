@@ -1,9 +1,21 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import Link from "next/link"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+} from "react"
 import { useRouter } from "next/navigation"
 
 import { GIORNI_BREVI, ore } from "@/lib/dati/formato"
+import {
+  azioniIntestazioneLavoratore,
+  azioniIntestazionePostazione,
+} from "@/lib/dati/navigazione"
 import {
   aggiornaCellaLavoratore,
   aggiornaCellaPostazione,
@@ -38,6 +50,16 @@ type Editor =
       data: string
     }
 
+type DettaglioRiga =
+  | { tipo: "lavoratore"; workerId: string; top: number; left: number }
+  | {
+      tipo: "postazione"
+      positionId: string
+      shiftTypeId: string
+      top: number
+      left: number
+    }
+
 function chiave(workerId: string, data: string) {
   return `${workerId}:${data}`
 }
@@ -69,6 +91,9 @@ export default function TabellaPianoInterattiva({
   const [correnti, setCorrenti] = useState(inizialiDaServer)
   const [vista, setVista] = useState(vistaIniziale)
   const [editor, setEditor] = useState<Editor | null>(null)
+  const [dettaglioRiga, setDettaglioRiga] = useState<DettaglioRiga | null>(null)
+  const triggerDettaglioRef = useRef<HTMLButtonElement | null>(null)
+  const dialogDettaglioRef = useRef<HTMLElement | null>(null)
   const [turnoScelto, setTurnoScelto] = useState("")
   const [postazioneScelta, setPostazioneScelta] = useState("")
   const [lavoratoriScelti, setLavoratoriScelti] = useState<Set<string>>(new Set())
@@ -120,7 +145,98 @@ export default function TabellaPianoInterattiva({
     [postazioni, turni],
   )
 
+  const chiudiDettaglio = useCallback((ripristinaFocus = true) => {
+    setDettaglioRiga(null)
+    if (ripristinaFocus) {
+      requestAnimationFrame(() => triggerDettaglioRef.current?.focus())
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!dettaglioRiga) return
+    const frame = requestAnimationFrame(() => {
+      dialogDettaglioRef.current
+        ?.querySelector<HTMLElement>("button, a[href]")
+        ?.focus()
+    })
+
+    function gestisciTastiera(evento: KeyboardEvent) {
+      if (evento.key === "Escape") {
+        evento.preventDefault()
+        chiudiDettaglio()
+        return
+      }
+      if (evento.key !== "Tab" || !dialogDettaglioRef.current) return
+
+      const elementi = Array.from(
+        dialogDettaglioRef.current.querySelectorAll<HTMLElement>(
+          "button:not([disabled]), a[href]",
+        ),
+      )
+      if (elementi.length === 0) return
+      const primo = elementi[0]
+      const ultimo = elementi[elementi.length - 1]
+      if (evento.shiftKey && document.activeElement === primo) {
+        evento.preventDefault()
+        ultimo.focus()
+      } else if (!evento.shiftKey && document.activeElement === ultimo) {
+        evento.preventDefault()
+        primo.focus()
+      } else if (!dialogDettaglioRef.current.contains(document.activeElement)) {
+        evento.preventDefault()
+        primo.focus()
+      }
+    }
+
+    window.addEventListener("keydown", gestisciTastiera)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener("keydown", gestisciTastiera)
+    }
+  }, [chiudiDettaglio, dettaglioRiga])
+
+  function posizioneDettaglio(
+    evento: MouseEvent<HTMLButtonElement>,
+    altezzaStimata: number,
+  ) {
+    const rettangolo = evento.currentTarget.getBoundingClientRect()
+    const left = Math.max(8, Math.min(rettangolo.left, window.innerWidth - 296))
+    const sotto = rettangolo.bottom + 6
+    const top =
+      sotto + altezzaStimata <= window.innerHeight
+        ? sotto
+        : Math.max(8, rettangolo.top - altezzaStimata - 6)
+    return { top, left }
+  }
+
+  function apriDettaglioLavoratore(
+    evento: MouseEvent<HTMLButtonElement>,
+    workerId: string,
+  ) {
+    triggerDettaglioRef.current = evento.currentTarget
+    setDettaglioRiga({
+      tipo: "lavoratore",
+      workerId,
+      ...posizioneDettaglio(evento, 170),
+    })
+  }
+
+  function apriDettaglioPostazione(
+    evento: MouseEvent<HTMLButtonElement>,
+    positionId: string,
+    shiftTypeId: string,
+  ) {
+    triggerDettaglioRef.current = evento.currentTarget
+    setDettaglioRiga({
+      tipo: "postazione",
+      positionId,
+      shiftTypeId,
+      ...posizioneDettaglio(evento, 240),
+    })
+  }
+
   function apriLavoratore(workerId: string, data: string) {
+    setDettaglioRiga(null)
     const corrente = perLavoratoreGiorno.get(chiave(workerId, data))
     setTurnoScelto(corrente?.shiftTypeId ?? "")
     setPostazioneScelta(corrente?.positionId ?? "")
@@ -128,6 +244,7 @@ export default function TabellaPianoInterattiva({
   }
 
   function apriPostazione(positionId: string, shiftTypeId: string, data: string) {
+    setDettaglioRiga(null)
     const ids = lavoratoriCellaPostazione(
       correnti,
       positionId,
@@ -230,6 +347,28 @@ export default function TabellaPianoInterattiva({
     )
   })
 
+  const azioniDettaglio =
+    dettaglioRiga?.tipo === "lavoratore"
+      ? azioniIntestazioneLavoratore(dettaglioRiga.workerId)
+      : dettaglioRiga?.tipo === "postazione"
+        ? azioniIntestazionePostazione(
+            dettaglioRiga.positionId,
+            dettaglioRiga.shiftTypeId,
+          )
+        : []
+  const titoloDettaglio =
+    dettaglioRiga?.tipo === "lavoratore"
+      ? `${lavoratorePerId.get(dettaglioRiga.workerId)?.cognome ?? ""} ${lavoratorePerId.get(dettaglioRiga.workerId)?.nome ?? ""}`.trim()
+      : dettaglioRiga?.tipo === "postazione"
+        ? `${postazionePerId.get(dettaglioRiga.positionId)?.nome ?? ""} · ${turnoPerId.get(dettaglioRiga.shiftTypeId)?.nome ?? ""}`
+        : ""
+  const descrizioneDettaglio =
+    dettaglioRiga?.tipo === "lavoratore"
+      ? `${ore(Number(lavoratorePerId.get(dettaglioRiga.workerId)?.ore_settimanali ?? 0))} contrattuali a settimana`
+      : dettaglioRiga?.tipo === "postazione"
+        ? `${turnoPerId.get(dettaglioRiga.shiftTypeId)?.codice ?? ""} · ${turnoPerId.get(dettaglioRiga.shiftTypeId)?.ora_inizio.slice(0, 5) ?? ""}–${turnoPerId.get(dettaglioRiga.shiftTypeId)?.ora_fine.slice(0, 5) ?? ""}`
+        : ""
+
   return (
     <div className="space-y-3">
       <div className="no-stampa flex flex-wrap items-center gap-3 rounded-lg border border-bordo bg-superficie px-3 py-2">
@@ -237,21 +376,28 @@ export default function TabellaPianoInterattiva({
           <button
             type="button"
             className={`rounded-md px-2.5 py-1 transition-colors ${vista === "lavoratore" ? "bg-superficie font-medium shadow-sm" : "text-tenue hover:text-testo"}`}
-            onClick={() => setVista("lavoratore")}
+            onClick={() => {
+              setVista("lavoratore")
+              setDettaglioRiga(null)
+            }}
           >
             per lavoratore
           </button>
           <button
             type="button"
             className={`rounded-md px-2.5 py-1 transition-colors ${vista === "postazione" ? "bg-superficie font-medium shadow-sm" : "text-tenue hover:text-testo"}`}
-            onClick={() => setVista("postazione")}
+            onClick={() => {
+              setVista("postazione")
+              setDettaglioRiga(null)
+            }}
           >
             per postazione
           </button>
         </div>
         <p className="text-sm text-tenue">
           Clicca una cella per modificarla
-          {vista === "postazione" ? " e scegliere i lavoratori assegnati" : ""}.
+          {vista === "postazione" ? " e scegliere i lavoratori assegnati" : ""}; clicca
+          un&apos;intestazione di riga per aprire i collegamenti contestuali.
         </p>
         <div className="ml-auto flex items-center gap-2">
           {modifiche.length > 0 && (
@@ -311,8 +457,23 @@ export default function TabellaPianoInterattiva({
                   const target = (Number(l.ore_settimanali) * giorni.length) / 7
                   return (
                     <tr key={l.id} className="hover:bg-accento-tenue/40">
-                      <td className="sticky left-0 z-10 bg-superficie px-3 py-1.5 border-b border-r border-bordo whitespace-nowrap">
-                        {l.cognome} {l.nome}
+                      <td className="sticky left-0 z-10 bg-superficie border-b border-r border-bordo whitespace-nowrap">
+                        <button
+                          type="button"
+                          aria-haspopup="dialog"
+                          aria-expanded={
+                            dettaglioRiga?.tipo === "lavoratore" &&
+                            dettaglioRiga.workerId === l.id
+                          }
+                          onClick={(evento) => apriDettaglioLavoratore(evento, l.id)}
+                          className="flex w-full items-center gap-2 px-3 py-1.5 text-left font-medium hover:bg-accento-tenue focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accento"
+                          title="Apri collegamenti e dati del lavoratore"
+                        >
+                          <span>{l.cognome} {l.nome}</span>
+                          <span aria-hidden="true" className="ml-auto text-xs text-tenue">
+                            •••
+                          </span>
+                        </button>
                       </td>
                       {giorni.map((g) => {
                         const k = chiave(l.id, g)
@@ -368,15 +529,33 @@ export default function TabellaPianoInterattiva({
               : postazioni.flatMap((p) =>
                   turni.map((t) => (
                     <tr key={`${p.id}:${t.id}`} className="hover:bg-accento-tenue/40">
-                      <td className="sticky left-0 z-10 bg-superficie px-3 py-1.5 border-b border-r border-bordo whitespace-nowrap">
-                        <span
-                          className="mr-2 inline-block h-5 w-5 rounded text-center text-[10px] font-medium leading-5 text-white align-middle"
-                          style={{ backgroundColor: p.colore }}
+                      <td className="sticky left-0 z-10 bg-superficie border-b border-r border-bordo whitespace-nowrap">
+                        <button
+                          type="button"
+                          aria-haspopup="dialog"
+                          aria-expanded={
+                            dettaglioRiga?.tipo === "postazione" &&
+                            dettaglioRiga.positionId === p.id &&
+                            dettaglioRiga.shiftTypeId === t.id
+                          }
+                          onClick={(evento) =>
+                            apriDettaglioPostazione(evento, p.id, t.id)
+                          }
+                          className="flex w-full items-center px-3 py-1.5 text-left hover:bg-accento-tenue focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accento"
+                          title="Apri collegamenti a postazione, turno e copertura"
                         >
-                          {t.codice}
-                        </span>
-                        {p.nome}
-                        <span className="text-tenue"> · {t.nome}</span>
+                          <span
+                            className="mr-2 inline-block h-5 w-5 rounded text-center text-[10px] font-medium leading-5 text-white align-middle"
+                            style={{ backgroundColor: p.colore }}
+                          >
+                            {t.codice}
+                          </span>
+                          <span>{p.nome}</span>
+                          <span className="text-tenue"> · {t.nome}</span>
+                          <span aria-hidden="true" className="ml-auto pl-2 text-xs text-tenue">
+                            •••
+                          </span>
+                        </button>
                       </td>
                       {giorni.map((g) => {
                         const ids = perPostTurnoGiorno.get(`${p.id}:${t.id}:${g}`) ?? []
@@ -461,6 +640,60 @@ export default function TabellaPianoInterattiva({
       <p className="no-stampa text-xs text-tenue">
         Le modifiche manuali sono persistenti. Rigenerare il piano sostituisce le assegnazioni dell&apos;intervallo selezionato.
       </p>
+
+      {dettaglioRiga && (
+        <>
+          <button
+            type="button"
+            aria-hidden="true"
+            tabIndex={-1}
+            className="fixed inset-0 z-30 cursor-default"
+            onClick={() => chiudiDettaglio()}
+          />
+          <aside
+            ref={dialogDettaglioRef}
+            role="dialog"
+            aria-label={`Collegamenti per ${titoloDettaglio}`}
+            className="fixed z-40 max-h-[calc(100vh-1rem)] w-[calc(100vw-1rem)] max-w-72 overflow-y-auto rounded-xl border border-bordo bg-superficie shadow-2xl"
+            style={{ top: dettaglioRiga.top, left: dettaglioRiga.left }}
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-bordo px-4 py-3">
+              <div>
+                <div className="font-semibold">{titoloDettaglio}</div>
+                <div className="mt-0.5 text-xs text-tenue">{descrizioneDettaglio}</div>
+              </div>
+              <button
+                type="button"
+                aria-label="Chiudi dettagli"
+                className="rounded px-1.5 py-0.5 text-tenue hover:bg-accento-tenue hover:text-testo focus:outline-none focus:ring-2 focus:ring-accento"
+                onClick={() => chiudiDettaglio()}
+              >
+                ×
+              </button>
+            </div>
+            {modifiche.length > 0 && (
+              <p className="border-b border-bordo bg-avviso-tenue px-4 py-2 text-xs text-avviso">
+                Hai modifiche non salvate: salvale prima di cambiare pagina.
+              </p>
+            )}
+            <nav aria-label="Collegamenti contestuali" className="p-2">
+              {azioniDettaglio.map((azione) => (
+                <Link
+                  key={azione.href}
+                  href={azione.href}
+                  onClick={() => chiudiDettaglio(false)}
+                  className="flex min-h-10 items-center justify-between rounded-lg px-3 py-2 text-sm font-medium hover:bg-accento-tenue focus:outline-none focus:ring-2 focus:ring-accento"
+                >
+                  {azione.etichetta}
+                  <span aria-hidden="true" className="text-tenue">
+                    →
+                  </span>
+                </Link>
+              ))}
+            </nav>
+          </aside>
+        </>
+      )}
 
       {editor && (
         <div

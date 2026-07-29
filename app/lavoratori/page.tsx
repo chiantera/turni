@@ -155,7 +155,11 @@ export default async function Lavoratori() {
             const abil = abilPerLav.get(l.id) ?? new Set<string>()
             const ass = assenzePerLav.get(l.id) ?? []
             return (
-              <div key={l.id} className={`scheda p-4 ${l.attivo ? "" : "opacity-60"}`}>
+              <div
+                id={`lavoratore-${l.id}`}
+                key={l.id}
+                className={`scheda scroll-mt-4 p-4 target:ring-2 target:ring-accento ${l.attivo ? "" : "opacity-60"}`}
+              >
                 <form action={aggiorna} className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr] items-end">
                   <input type="hidden" name="id" value={l.id} />
                   <div>
