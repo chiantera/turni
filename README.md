@@ -133,12 +133,13 @@ Le assegnazioni manuali vengono memorizzate con origine `manuale` e marcate
 come bloccate. Una nuova generazione sostituisce le assegnazioni dell'intervallo
 selezionato, comportamento indicato anche nell'interfaccia.
 
-Se il solver lascia delle **segnalazioni**, la pagina di pianificazione espone
-un'analisi AI su richiesta. L'assistente confronta le segnalazioni con
-copertura, organico, abilitazioni, assenze e vincoli, quindi propone interventi
-prioritizzati e collegamenti alle aree pertinenti. I suggerimenti non modificano
-automaticamente alcun dato: vanno valutati dal pianificatore e verificati con
-una nuova esecuzione del solver.
+Se il solver lascia delle **segnalazioni**, ogni riga permette di chiedere un
+suggerimento AI mirato. La richiesta contiene una sola segnalazione e riduce il
+contesto a lavoratori, postazioni, turni, copertura e vincoli pertinenti, così da
+limitare token, latenza e costo. L'analisi congiunta di tutte le segnalazioni è
+identificata come funzionalità **Premium** ad alto consumo; resta attiva durante
+lo sviluppo. I suggerimenti non modificano automaticamente alcun dato: vanno
+valutati dal pianificatore e verificati con una nuova esecuzione del solver.
 
 ### Il solver — `lib/solver/`
 
@@ -450,12 +451,13 @@ Manual assignments are stored with `manuale` origin and marked as locked.
 Generating again replaces assignments in the selected range, and the UI states
 this explicitly.
 
-When the solver leaves **diagnostics**, the planning page offers an on-demand
-AI analysis. The assistant compares diagnostics with coverage, staffing,
-qualifications, absences, and constraints, then returns prioritized suggestions
-and links to the relevant application areas. Suggestions never modify data
-automatically: a planner must evaluate them and verify the result by running
-the solver again.
+When the solver leaves **diagnostics**, each row offers a targeted AI
+suggestion. The request contains one diagnostic and trims context to relevant
+workers, positions, shifts, coverage, and constraints, reducing tokens, latency,
+and cost. Joint analysis of every diagnostic is marked as a high-consumption
+**Premium** feature and remains enabled during development. Suggestions never
+modify data automatically: a planner must evaluate them and verify the result
+by running the solver again.
 
 ### Solver — `lib/solver/`
 

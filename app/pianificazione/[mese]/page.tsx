@@ -180,6 +180,11 @@ export default async function Pianificazione({
                     className="rounded-lg bg-allarme-tenue px-3 py-2 text-sm text-allarme"
                   >
                     {violazione.messaggio}
+                    <SuggerimentiAI
+                      dal={dal}
+                      al={al}
+                      segnalazioneId={violazione.id}
+                    />
                   </li>
                 ))}
               </ul>
@@ -194,6 +199,11 @@ export default async function Pianificazione({
                   {altre.map((violazione) => (
                     <li key={violazione.id} className="px-3 py-1.5 text-sm text-tenue">
                       {violazione.messaggio}
+                      <SuggerimentiAI
+                        dal={dal}
+                        al={al}
+                        segnalazioneId={violazione.id}
+                      />
                     </li>
                   ))}
                 </ul>

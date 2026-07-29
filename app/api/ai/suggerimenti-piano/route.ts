@@ -2,7 +2,12 @@ import { NextResponse } from "next/server"
 
 import { generaSuggerimentiPiano } from "@/lib/ai/analisi-segnalazioni"
 import { ErroreConfigurazioneAI } from "@/lib/ai/provider"
-import type { ContestoSuggerimentiPiano } from "@/lib/ai/suggerimenti-piano"
+import {
+  riduciContestoAllaSegnalazione,
+  SchemaSuggerimentiPiano,
+  segnalazioneIdDaCorpo,
+  type ContestoSuggerimentiPiano,
+} from "@/lib/ai/suggerimenti-piano"
 import {
   ErroreIntervalloPianificazione,
   intervalloDaParametri,
@@ -15,12 +20,31 @@ import { creaClientServer, ePianificatore } from "@/lib/supabase/server"
 export const runtime = "nodejs"
 export const maxDuration = 60
 
+function riferimentiOggetto(valore: unknown): Record<string, unknown> | undefined {
+  return valore !== null && typeof valore === "object" && !Array.isArray(valore)
+    ? (valore as Record<string, unknown>)
+    : undefined
+}
+
 export async function POST(req: Request) {
   if (!(await ePianificatore())) {
     return NextResponse.json({ errore: "Non autorizzato." }, { status: 403 })
   }
 
-  const corpo = await req.json().catch(() => ({}))
+  const corpoJson: unknown = await req.json().catch(() => ({}))
+  const corpo =
+    corpoJson !== null && typeof corpoJson === "object" && !Array.isArray(corpoJson)
+      ? (corpoJson as Record<string, unknown>)
+      : {}
+  let segnalazioneId
+  try {
+    segnalazioneId = segnalazioneIdDaCorpo(corpo)
+  } catch (errore) {
+    return NextResponse.json(
+      { errore: errore instanceof Error ? errore.message : "Segnalazione non valida." },
+      { status: 400 },
+    )
+  }
   let intervallo
   try {
     intervallo = intervalloDaParametri({
@@ -52,10 +76,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ errore: "Nessun piano per questo intervallo." }, { status: 404 })
     }
 
-    const segnalazioni = await sb
+    let querySegnalazioni = sb
       .from("violations")
-      .select("gravita, tipo, messaggio, data, riferimenti")
+      .select("id, gravita, tipo, messaggio, data, riferimenti")
       .in("schedule_id", piani.data.map((piano) => piano.id))
+    if (segnalazioneId) querySegnalazioni = querySegnalazioni.eq("id", segnalazioneId)
+    const segnalazioni = await querySegnalazioni
     if (segnalazioni.error) throw segnalazioni.error
     const segnalazioniRilevanti = (segnalazioni.data ?? []).filter(
       (segnalazione) =>
@@ -68,8 +94,12 @@ export async function POST(req: Request) {
     )
     if (!segnalazioniRilevanti.length) {
       return NextResponse.json(
-        { errore: "Il piano non contiene segnalazioni da analizzare." },
-        { status: 400 },
+        {
+          errore: segnalazioneId
+            ? "Segnalazione non trovata nell’intervallo selezionato."
+            : "Il piano non contiene segnalazioni da analizzare.",
+        },
+        { status: segnalazioneId ? 404 : 400 },
       )
     }
 
@@ -84,7 +114,7 @@ export async function POST(req: Request) {
       abilitazioniPerLavoratore.set(abilitazione.worker_id, nomi)
     }
 
-    const contesto: ContestoSuggerimentiPiano = {
+    const contestoCompleto: ContestoSuggerimentiPiano = {
       dal: intervallo.dal,
       al: intervallo.al,
       segnalazioni: segnalazioniRilevanti.slice(0, 100).map((segnalazione) => ({
@@ -92,6 +122,7 @@ export async function POST(req: Request) {
         tipo: segnalazione.tipo,
         messaggio: segnalazione.messaggio,
         data: segnalazione.data,
+        riferimenti: riferimentiOggetto(segnalazione.riferimenti),
       })),
       lavoratori: dati.lavoratori.map((l) => ({
         nome: `${l.nome} ${l.cognome}`,
@@ -109,14 +140,21 @@ export async function POST(req: Request) {
       assenze: dati.assenze.length,
       vincoli: dati.vincoli.map((v) => v.descrizione),
     }
+    const contesto = segnalazioneId
+      ? riduciContestoAllaSegnalazione(
+          contestoCompleto,
+          contestoCompleto.segnalazioni[0],
+        )
+      : contestoCompleto
 
-    const esito = await generaSuggerimentiPiano(contesto, {
-      provider: corpo.provider ?? null,
-      modello: corpo.modello ?? null,
-    })
+    const esito = await generaSuggerimentiPiano(contesto)
+
+    const descrizioneInterazione = segnalazioneId
+      ? `Analisi della segnalazione ${segnalazioneId}`
+      : `Analisi delle segnalazioni dal ${intervallo.dal} al ${intervallo.al}`
 
     await sb.from("ai_interactions").insert({
-      testo: `Analisi delle segnalazioni dal ${intervallo.dal} al ${intervallo.al}`,
+      testo: descrizioneInterazione,
       risposta: esito as never,
       accettato: false,
       provider: esito.provider,
@@ -126,16 +164,23 @@ export async function POST(req: Request) {
       latenza_ms: esito.latenzaMs,
     })
 
-    return NextResponse.json(esito)
+    return NextResponse.json(SchemaSuggerimentiPiano.parse(esito))
   } catch (errore) {
     const messaggio = errore instanceof Error ? errore.message : "Errore imprevisto."
+    const erroreConfigurazione = errore instanceof ErroreConfigurazioneAI
     await sb.from("ai_interactions").insert({
-      testo: `Analisi delle segnalazioni dal ${intervallo.dal} al ${intervallo.al}`,
+      testo: segnalazioneId
+        ? `Analisi della segnalazione ${segnalazioneId}`
+        : `Analisi delle segnalazioni dal ${intervallo.dal} al ${intervallo.al}`,
       errore: messaggio,
     })
     return NextResponse.json(
-      { errore: messaggio },
-      { status: errore instanceof ErroreConfigurazioneAI ? 400 : 502 },
+      {
+        errore: erroreConfigurazione
+          ? "Il servizio AI non è configurato. Contatta l’amministratore."
+          : "Il servizio AI non è disponibile. Riprova più tardi.",
+      },
+      { status: erroreConfigurazione ? 400 : 502 },
     )
   }
 }
