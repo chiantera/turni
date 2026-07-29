@@ -218,6 +218,28 @@ describe("determinismo", () => {
 
     expect(secondo.stato.assegnatoA).toEqual(primo.stato.assegnatoA)
     expect(primo.iterazioni).toBeLessThanOrEqual(250)
+    expect(primo.qualitaRicerca.costoIniziale).toBeGreaterThanOrEqual(
+      primo.qualitaRicerca.costoFinale,
+    )
+    expect(primo.qualitaRicerca.miglioramento).toBeCloseTo(
+      primo.qualitaRicerca.costoIniziale - primo.qualitaRicerca.costoFinale,
+    )
+
+    const zero = generaPiano(scenario(), { seme: 17, tempoMaxMs: 50, iterazioniMax: 0 })
+    expect(zero.iterazioni).toBe(0)
+    expect(zero.qualitaRicerca.costoIniziale).toBe(zero.qualitaRicerca.costoFinale)
+    expect(zero.qualitaRicerca.miglioramento).toBe(0)
+
+    for (const budget of [Number.NaN, Number.POSITIVE_INFINITY, -1]) {
+      const esito = generaPiano(scenario(), { seme: 17, tempoMaxMs: 50, iterazioniMax: budget })
+      expect(esito.iterazioni).toBe(0)
+    }
+    const frazionale = generaPiano(scenario(), {
+      seme: 17,
+      tempoMaxMs: 50,
+      iterazioniMax: 1.9,
+    })
+    expect(frazionale.iterazioni).toBeLessThanOrEqual(1)
   })
 })
 

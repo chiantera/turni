@@ -1,7 +1,7 @@
 import type { EsitoCompleto } from "./index"
 
 export interface SnapshotSolver {
-  versione: 1
+  versione: 2
   intervallo: { dal: string; al: string }
   improntaInput: string
   seme: number
@@ -28,7 +28,7 @@ export function snapshotDaEsito(
   tempoMaxMs: number,
 ): SnapshotSolver {
   return {
-    versione: 1,
+    versione: 2,
     intervallo,
     improntaInput,
     seme,

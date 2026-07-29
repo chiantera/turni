@@ -60,6 +60,12 @@ export function ottimizza(
   const T0 = opz.temperaturaIniziale ?? 800
   const T1 = opz.temperaturaFinale ?? 0.5
   const stalloMax = opz.stalloMax ?? 60_000
+  const iterazioniMax =
+    opz.iterazioniMax === undefined
+      ? undefined
+      : Number.isFinite(opz.iterazioniMax)
+        ? Math.max(0, Math.floor(opz.iterazioniMax))
+        : 0
 
   // Costo corrente scomposto, così una mossa che tocca 2 lavoratori ricalcola
   // solo 2 voci invece di tutte.
@@ -96,8 +102,8 @@ export function ottimizza(
   const decadimento = 0.99995
 
   while (
-    (opz.iterazioniMax !== undefined
-      ? iter < Math.max(0, opz.iterazioniMax)
+    (iterazioniMax !== undefined
+      ? iter < iterazioniMax
       : Date.now() - t0 < opz.tempoMaxMs) &&
     stallo < stalloMax
   ) {
