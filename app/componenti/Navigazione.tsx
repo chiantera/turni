@@ -5,7 +5,6 @@ import { creaClientServer, utenteCorrente } from "@/lib/supabase/server"
 import { meseCorrente } from "@/lib/dati/formato"
 
 const VOCI = [
-  { href: "/", etichetta: "Riepilogo" },
   { href: "/lavoratori", etichetta: "Lavoratori" },
   { href: "/postazioni", etichetta: "Postazioni" },
   { href: "/turni", etichetta: "Turni" },

@@ -39,10 +39,21 @@ export function dataEstesa(iso: string): string {
   return `${g} ${MESI[m - 1]} ${iso.slice(0, 4)}`
 }
 
-/** Primo giorno del mese corrente, in ISO. */
-export function meseCorrente(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`
+/** Primo giorno del mese corrente in Italia, in ISO. */
+export function meseCorrente(data = new Date()): string {
+  const parti = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Rome",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(data)
+  const anno = parti.find((p) => p.type === "year")?.value
+  const mese = parti.find((p) => p.type === "month")?.value
+  if (!anno || !mese) throw new Error("Impossibile determinare il mese corrente.")
+  return `${anno}-${mese}-01`
+}
+
+export function percorsoPianificazioneCorrente(data = new Date()): string {
+  return `/pianificazione/${meseCorrente(data)}`
 }
 
 /** Sposta di n mesi mantenendo il formato AAAA-MM-01. */
