@@ -2,6 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import { creaClientServer, utenteCorrente } from "@/lib/supabase/server"
+import { percorsoPianificazioneCorrente } from "@/lib/dati/formato"
 import { vociNavigazione } from "@/lib/dati/navigazione"
 
 async function esci() {
@@ -49,6 +50,13 @@ export default async function Navigazione() {
             ))}
           </div>
         </details>
+
+        <Link
+          href={percorsoPianificazioneCorrente()}
+          className="ml-1 rounded-lg bg-accento px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+        >
+          Pianifica
+        </Link>
 
         <div className="ml-auto flex items-center gap-3 text-sm text-tenue">
           <span className="hidden sm:inline">

@@ -1,11 +1,9 @@
-import { meseCorrente } from "./formato"
-
 export interface VoceNavigazione {
   href: string
   etichetta: string
 }
 
-export function vociNavigazione(data = new Date()): VoceNavigazione[] {
+export function vociNavigazione(): VoceNavigazione[] {
   return [
     { href: "/riepilogo", etichetta: "Riepilogo" },
     { href: "/lavoratori", etichetta: "Lavoratori" },
@@ -14,6 +12,5 @@ export function vociNavigazione(data = new Date()): VoceNavigazione[] {
     { href: "/copertura", etichetta: "Copertura" },
     { href: "/vincoli", etichetta: "Vincoli" },
     { href: "/impostazioni", etichetta: "Impostazioni" },
-    { href: `/pianificazione/${meseCorrente(data)}`, etichetta: "Pianifica" },
   ]
 }
