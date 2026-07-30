@@ -13,6 +13,8 @@ type Modifica = {
 }
 
 type Preview = {
+  planningRunId: string
+  versione: number
   modifiche: Modifica[]
   precondizioni: Modifica[]
   oreTotali: number
@@ -83,13 +85,12 @@ export default function DecisioneOreEccedenti({
     setErrore(null)
     setEsito(null)
     try {
-      const risposta = await fetch("/api/piano/assegnazioni", {
-        method: "PUT",
+      const risposta = await fetch("/api/piano/ore-eccedenti/applica", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          dal,
-          al,
-          modifiche: preview.modifiche,
+          planningRunId: preview.planningRunId,
+          versione: preview.versione,
           precondizioni: preview.precondizioni,
         }),
       })

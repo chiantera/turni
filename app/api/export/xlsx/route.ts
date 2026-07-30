@@ -6,7 +6,6 @@ import {
   ErroreIntervalloPianificazione,
   giorniIntervallo,
   intervalloDaParametri,
-  mesiIntervallo,
 } from "@/lib/dati/intervallo"
 import { giornoSettimana } from "@/lib/solver/tempo"
 import { creaClientServer, ePianificatore } from "@/lib/supabase/server"
@@ -46,10 +45,17 @@ export async function GET(req: Request) {
   const nGiorni = giorni.length
 
   const sb = await creaClientServer()
-  const piani = await sb
-    .from("schedules")
+  const run = await sb
+    .from("planning_runs")
     .select("id")
-    .in("mese", mesiIntervallo(dal, al))
+    .eq("dal", dal)
+    .eq("al", al)
+    .maybeSingle()
+  if (run.error) throw run.error
+  if (!run.data) {
+    return NextResponse.json({ errore: "Nessun piano per questo intervallo." }, { status: 404 })
+  }
+  const piani = await sb.from("schedules").select("id").eq("planning_run_id", run.data.id)
   if (piani.error) throw piani.error
   if (!piani.data?.length) {
     return NextResponse.json({ errore: "Nessun piano per questo intervallo." }, { status: 404 })

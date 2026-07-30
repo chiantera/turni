@@ -113,9 +113,19 @@ export default async function Pianificazione({
   const mesi = mesiIntervallo(dal, al)
 
   const sb = await creaClientServer()
+  const planningRun = await sb
+    .from("planning_runs")
+    .select("id, versione")
+    .eq("dal", dal)
+    .eq("al", al)
+    .maybeSingle()
+  if (planningRun.error) throw planningRun.error
+  const pianiQuery = planningRun.data
+    ? sb.from("schedules").select("*").eq("planning_run_id", planningRun.data.id).order("mese")
+    : Promise.resolve({ data: [], error: null })
   const [piani, lavoratori, postazioni, turni, festivita, abilitazioni, assenze] =
     await Promise.all([
-      sb.from("schedules").select("*").in("mese", mesi).order("mese"),
+      pianiQuery,
       sb.from("workers").select("*").eq("attivo", true).order("cognome"),
       sb.from("positions").select("*").eq("attiva", true).order("ordine"),
       sb
@@ -194,9 +204,6 @@ export default async function Pianificazione({
     ? nomeMese(dal)
     : `${dataEstesa(dal)} – ${dataEstesa(al)}`
   const haPiano = (piani.data ?? []).length > 0
-  const mesiMancanti = mesi.filter(
-    (meseIntervallo) => !(piani.data ?? []).some((piano) => piano.mese === meseIntervallo),
-  )
   const versionePiano = (piani.data ?? [])
     .map((piano) => `${piano.id}:${piano.aggiornato_il}`)
     .join("|")
@@ -208,11 +215,6 @@ export default async function Pianificazione({
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold capitalize">{titolo}</h1>
-            <p className="mt-1 text-sm text-tenue">
-              {haPiano
-                ? `${assegnazioni.length} turni assegnati nell’intervallo selezionato${mesiMancanti.length > 0 ? ` · ${mesiMancanti.length} ${mesiMancanti.length === 1 ? "mese da generare" : "mesi da generare"}` : ""}`
-                : "Nessun piano generato per questo intervallo."}
-            </p>
           </div>
           {meseCompleto && (
             <div className="no-stampa flex items-center gap-2 text-sm">
@@ -232,19 +234,26 @@ export default async function Pianificazione({
           )}
         </div>
 
-        <SelettoreIntervallo key={`${dal}:${al}`} dal={dal} al={al} />
-        <BarraAzioni dal={dal} al={al} esistente={haPiano} />
-        {haPiano && oreEccedenti !== null && oreEccedenti > 0 && (
-          <DecisioneOreEccedenti
-            dal={dal}
-            al={al}
-            oreEccedenti={oreEccedenti}
-            numeroLavoratori={lavoratori.data?.length ?? 0}
-          />
-        )}
+        <details className="no-stampa rounded-xl border border-bordo bg-superficie" open={!haPiano}>
+          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium hover:bg-accento-tenue [&::-webkit-details-marker]:hidden">
+            <span className="mr-2 text-accento">☰</span>
+            Menu pianificazione
+            <span className="ml-2 text-xs font-normal text-tenue">strumenti, viste e segnalazioni</span>
+          </summary>
+          <div className="space-y-4 border-t border-bordo p-4">
+            <SelettoreIntervallo key={`${dal}:${al}`} dal={dal} al={al} />
+            <BarraAzioni dal={dal} al={al} esistente={haPiano} />
+            {haPiano && oreEccedenti !== null && oreEccedenti > 0 && (
+              <DecisioneOreEccedenti
+                dal={dal}
+                al={al}
+                oreEccedenti={oreEccedenti}
+                numeroLavoratori={lavoratori.data?.length ?? 0}
+              />
+            )}
 
-        {(bloccanti.length > 0 || altre.length > 0) && (
-          <section className="scheda space-y-3 p-4">
+            {(bloccanti.length > 0 || altre.length > 0) && (
+              <section className="scheda space-y-3 p-4">
             <h2 className="font-medium">
               Segnalazioni
               {bloccanti.length > 0 && (
@@ -313,8 +322,10 @@ export default async function Pianificazione({
               al={al}
               numeroSegnalazioni={violazioni.length}
             />
-          </section>
-        )}
+              </section>
+            )}
+          </div>
+        </details>
 
         {!haPiano ? (
           <div className="scheda p-8 text-center text-tenue">

@@ -61,6 +61,11 @@ ridondanti vengono rimosse tramite il normale percorso di salvataggio. Il
 preview fallisce se il piano è cambiato nel frattempo; la selezione casuale non
 è una politica valida.
 
+La persistenza usa un **planning run** con intervallo inclusivo `dal`/`al`.
+Le righe mensili sono segmenti tecnici e non confini del piano: generazione e
+applicazione attraversano più mesi in un'unica transazione, con controllo di
+versione e rollback completo in caso di conflitto.
+
 ### Pianificazione per intervallo
 
 La schermata **Pianifica** usa un intervallo di date inclusivo. Il pianificatore
@@ -80,10 +85,10 @@ mese indicato, mantenendo compatibili collegamenti e segnalibri esistenti. Se
 l'utente deve autenticarsi, la destinazione e l'intervallo selezionato vengono
 conservati dopo l'accesso.
 
-I piani restano archiviati in record mensili compatibili con i dati esistenti,
-ma l'interfaccia li combina in un'unica bozza. Generare un intervallo aggiorna
-solo le date selezionate nei mesi coinvolti e conserva le assegnazioni esterne
-all'intervallo nei mesi iniziale e finale.
+Il piano logico è un **planning run** identificato dall'intervallo completo.
+Le righe mensili sono segmenti tecnici per compatibilità e lettura, non piani
+indipendenti. Un run sovrapposto precedente viene archiviato quando si genera
+un nuovo intervallo, così ogni lettura risolve un solo piano canonico.
 
 Il solver carica sette giorni di contesto immutabile prima di `dal` e dopo `al`:
 in questo modo riposi minimi e giorni consecutivi restano validi anche ai bordi
@@ -91,11 +96,17 @@ dell'intervallo. Le segnalazioni datate esterne all'intervallo non vengono
 mostrate come parte della nuova generazione; quelle complessive sono associate
 alla coppia `dal`/`al` che le ha prodotte.
 
-Il salvataggio inserisce o aggiorna le nuove assegnazioni prima di eliminare le
-righe diventate obsolete. Una lettura Supabase incompleta interrompe la
-generazione invece di essere interpretata come un insieme di dati vuoto. Le
-operazioni su più mesi non sono tuttavia una singola transazione PostgreSQL: per
-una garanzia strettamente atomica fra tutti i mesi servirà una RPC transazionale.
+Generazione, modifiche manuali e applicazione delle riduzioni usano RPC
+PostgreSQL transazionali sull'intero run. Le operazioni bloccano la versione del
+run, ricontrollano le precondizioni e fanno rollback completo se una cella è
+cambiata, bloccata o fuori intervallo. Una lettura Supabase incompleta
+interrompe la generazione invece di essere interpretata come un insieme di dati
+vuoto.
+
+Con un piano già generato, la schermata mostra direttamente il titolo del mese
+o dell'intervallo e la griglia **per lavoratore**. Selettore date, generazione,
+fattibilità, export, stampa, segnalazioni, suggerimenti AI e decisione sulle
+ore eccedenti sono raccolti nel **Menu pianificazione**, chiuso di default.
 
 ### Modifica manuale e salvataggio del piano
 
@@ -152,9 +163,10 @@ focus sui propri controlli, mantiene la navigazione `Tab` al suo interno, si
 chiude con `Esc`, con il pulsante di chiusura o con un clic esterno e, quando
 appropriato, restituisce il focus all'intestazione di partenza.
 
-Le assegnazioni manuali vengono memorizzate con origine `manuale` e marcate
-come bloccate. Una nuova generazione sostituisce le assegnazioni dell'intervallo
-selezionato, comportamento indicato anche nell'interfaccia.
+Le assegnazioni manuali vengono memorizzate con origine `manuale`; le celle
+bloccate restano protette e non possono essere rimosse da una riduzione o da una
+modifica incompatibile. Una nuova generazione sostituisce le assegnazioni
+dell'intervallo selezionato, comportamento indicato anche nell'interfaccia.
 
 Se il solver lascia delle **segnalazioni**, ogni riga permette di chiedere un
 suggerimento AI mirato. La richiesta contiene una sola segnalazione e riduce il
@@ -464,21 +476,26 @@ complete named month, preserving existing links and bookmarks. When
 authentication is required, the destination and selected range survive the
 login flow.
 
-Schedules remain stored in backward-compatible monthly records, while the UI
-combines them into one draft. Generating a range replaces only its selected
-dates in each affected month and preserves assignments outside the range in the
-first and last months.
+The logical plan is a **planning run** identified by the complete date range.
+Monthly rows remain technical segments for compatibility and reading; they are
+not independent plans. A previous overlapping draft run is archived when a new
+range is generated, so every read resolves one canonical plan.
 
 The solver loads seven immutable context days before `dal` and after `al`, so
 minimum-rest and consecutive-day constraints remain valid at both boundaries.
 Dated diagnostics outside the range are not presented as part of the new run;
 range-wide diagnostics are scoped to the `dal`/`al` pair that produced them.
 
-Persistence upserts replacement assignments before removing obsolete rows. An
-incomplete Supabase read aborts generation instead of being interpreted as an
-empty dataset. Multi-month writes are not yet one PostgreSQL transaction,
-however; strict all-or-nothing atomicity across every month would require a
-transactional RPC.
+Generation, manual edits, and reduction application use transactional
+PostgreSQL RPCs across the complete run. Each operation locks the run version,
+rechecks its preconditions, and rolls back completely if a cell changed, became
+locked, or falls outside the selected range. An incomplete Supabase read aborts
+generation instead of being interpreted as an empty dataset.
+
+Once a schedule exists, the screen shows the month or range title and the
+**by-worker** grid directly. Date selection, generation, feasibility, exports,
+printing, diagnostics, AI suggestions, and excess-hours decisions are grouped
+inside the collapsed **Planning menu**.
 
 ### Manual schedule editing and persistence
 

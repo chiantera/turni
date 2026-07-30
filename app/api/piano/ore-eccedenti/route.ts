@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { caricaDatiSolver } from "@/lib/dati/piano"
-import { mesiIntervallo, validaIntervallo } from "@/lib/dati/intervallo"
+import { validaIntervallo } from "@/lib/dati/intervallo"
 import { costruisciModello } from "@/lib/solver/modello"
 import { creaClientServer, ePianificatore } from "@/lib/supabase/server"
 
@@ -111,13 +111,34 @@ export async function POST(req: Request) {
     const dati = await caricaDatiSolver(dal, al)
     const modello = costruisciModello(dati)
     const sb = await creaClientServer()
-    const mesi = mesiIntervallo(dal, al)
-    const piani = await sb.from("schedules").select("id, mese, aggiornato_il").in("mese", mesi)
+    const runLookup = await sb
+      .from("planning_runs")
+      .select("id, versione")
+      .eq("dal", dal)
+      .eq("al", al)
+      .maybeSingle()
+    if (runLookup.error) throw runLookup.error
+    if (!runLookup.data) {
+      return NextResponse.json({ errore: "Nessun piano per questo intervallo." }, { status: 404 })
+    }
+    const piani = await sb
+      .from("schedules")
+      .select("id, mese, aggiornato_il, planning_run_id")
+      .eq("planning_run_id", runLookup.data.id)
     if (piani.error) throw piani.error
     const scheduleIds = (piani.data ?? []).map((piano) => piano.id)
     if (scheduleIds.length === 0) {
       return NextResponse.json({ modifiche: [], oreTotali: 0, lavoratori: [], date: [] })
     }
+    const planningRunIds = [...new Set((piani.data ?? []).map((piano) => piano.planning_run_id))]
+    if (planningRunIds.length !== 1) {
+      return NextResponse.json(
+        { errore: "L'intervallo non appartiene a un unico planning run. Rigenera l'intervallo prima di applicare una politica." },
+        { status: 409 },
+      )
+    }
+    const planningRun = { data: runLookup.data, error: null }
+    if (planningRun.error || !planningRun.data) throw planningRun.error ?? new Error("Planning run non trovato.")
 
     const assegnazioni = await sb
       .from("assignments")
@@ -188,6 +209,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       politica,
+      planningRunId: planningRun.data.id,
+      versione: planningRun.data.versione,
       modifiche: selezionati.map((candidato) => ({
         workerId: candidato.workerId,
         data: candidato.data,
@@ -208,7 +231,7 @@ export async function POST(req: Request) {
       })),
       date: [...new Set(selezionati.map((candidato) => candidato.data))].sort(),
       coperturaPreservata: true,
-      versione: (piani.data ?? [])
+      versioneSegmenti: (piani.data ?? [])
         .map((piano) => `${piano.mese}:${piano.aggiornato_il}`)
         .sort()
         .join("|"),

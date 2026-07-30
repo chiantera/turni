@@ -256,6 +256,36 @@ export type Database = {
         }
         Relationships: []
       }
+      planning_runs: {
+        Row: {
+          al: string
+          aggiornato_il: string
+          creato_il: string
+          dal: string
+          id: string
+          stato: Database["public"]["Enums"]["stato_piano"]
+          versione: number
+        }
+        Insert: {
+          al: string
+          aggiornato_il?: string
+          creato_il?: string
+          dal: string
+          id?: string
+          stato?: Database["public"]["Enums"]["stato_piano"]
+          versione?: number
+        }
+        Update: {
+          al?: string
+          aggiornato_il?: string
+          creato_il?: string
+          dal?: string
+          id?: string
+          stato?: Database["public"]["Enums"]["stato_piano"]
+          versione?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           creato_il: string
@@ -287,6 +317,7 @@ export type Database = {
           id: string
           mese: string
           parametri: Json
+          planning_run_id: string
           punteggio: Json | null
           seed: number
           stato: Database["public"]["Enums"]["stato_piano"]
@@ -297,6 +328,7 @@ export type Database = {
           id?: string
           mese: string
           parametri?: Json
+          planning_run_id: string
           punteggio?: Json | null
           seed?: number
           stato?: Database["public"]["Enums"]["stato_piano"]
@@ -307,6 +339,7 @@ export type Database = {
           id?: string
           mese?: string
           parametri?: Json
+          planning_run_id?: string
           punteggio?: Json | null
           seed?: number
           stato?: Database["public"]["Enums"]["stato_piano"]
@@ -481,6 +514,31 @@ export type Database = {
     }
     Views: { [_ in never]: never }
     Functions: {
+      applica_riduzione_ore: {
+        Args: { p_planning_run_id: string; p_precondizioni: Json; p_versione: number }
+        Returns: number
+      }
+      salva_piano_intervallo: {
+        Args: {
+          p_al: string
+          p_assegnazioni: Json
+          p_dal: string
+          p_parametri: Json
+          p_punteggio: Json
+          p_seme: number
+          p_violazioni: Json
+        }
+        Returns: Json
+      }
+      salva_modifiche_intervallo: {
+        Args: {
+          p_modifiche: Json
+          p_planning_run_id: string
+          p_precondizioni: Json
+          p_versione: number
+        }
+        Returns: number
+      }
       e_pianificatore: { Args: never; Returns: boolean }
       ruolo_corrente: {
         Args: never

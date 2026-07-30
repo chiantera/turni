@@ -12,7 +12,6 @@ import {
 import {
   ErroreIntervalloPianificazione,
   intervalloDaParametri,
-  mesiIntervallo,
   segnalazioneRilevante,
 } from "@/lib/dati/intervallo"
 import { caricaDatiSolver } from "@/lib/dati/piano"
@@ -74,10 +73,20 @@ export async function POST(req: Request) {
 
   const sb = await creaClientServer()
   try {
+    const run = await sb
+      .from("planning_runs")
+      .select("id")
+      .eq("dal", intervallo.dal)
+      .eq("al", intervallo.al)
+      .maybeSingle()
+    if (run.error) throw run.error
+    if (!run.data) {
+      return NextResponse.json({ errore: "Nessun piano per questo intervallo." }, { status: 404 })
+    }
     const piani = await sb
       .from("schedules")
       .select("id, punteggio")
-      .in("mese", mesiIntervallo(intervallo.dal, intervallo.al))
+      .eq("planning_run_id", run.data.id)
     if (piani.error) throw piani.error
     if (!piani.data?.length) {
       return NextResponse.json({ errore: "Nessun piano per questo intervallo." }, { status: 404 })

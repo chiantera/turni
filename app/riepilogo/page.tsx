@@ -12,13 +12,24 @@ export default async function Riepilogo() {
   const corrente = await utenteCorrente()
   const mese = meseCorrente()
   const prossimo = spostaMese(mese, 1)
+  const [runCorrente, runProssimo] = await Promise.all([
+    sb.from("planning_runs").select("id").eq("dal", mese).eq("al", mese).maybeSingle(),
+    sb.from("planning_runs").select("id").eq("dal", prossimo).eq("al", prossimo).maybeSingle(),
+  ])
+  if (runCorrente.error) throw runCorrente.error
+  if (runProssimo.error) throw runProssimo.error
+  const runIds = [runCorrente.data?.id, runProssimo.data?.id].filter(
+    (id): id is string => Boolean(id),
+  )
 
   const [lavoratori, postazioni, turni, vincoli, piani] = await Promise.all([
     sb.from("workers").select("id", { count: "exact", head: true }).eq("attivo", true),
     sb.from("positions").select("id", { count: "exact", head: true }).eq("attiva", true),
     sb.from("shift_types").select("id", { count: "exact", head: true }).eq("attivo", true),
     sb.from("constraints").select("id", { count: "exact", head: true }).eq("attivo", true),
-    sb.from("schedules").select("mese, stato, punteggio").in("mese", [mese, prossimo]),
+    runIds.length
+      ? sb.from("schedules").select("mese, stato, punteggio").in("planning_run_id", runIds)
+      : Promise.resolve({ data: [], error: null }),
   ])
 
   return (

@@ -55,11 +55,27 @@ export async function GET(req: Request) {
   const { dal, al } = intervallo
 
   const sb = await creaClientServer()
+  const run = await sb
+    .from("planning_runs")
+    .select("id")
+    .eq("dal", dal)
+    .eq("al", al)
+    .maybeSingle()
+  if (run.error) throw run.error
+  if (!run.data) {
+    return NextResponse.json({ errore: "Nessun piano per questo intervallo." }, { status: 404 })
+  }
+  const segmenti = await sb
+    .from("schedules")
+    .select("id")
+    .eq("planning_run_id", run.data.id)
+  if (segmenti.error) throw segmenti.error
   const [assegnazioni, turni, postazioni, lavoratore] = await Promise.all([
     sb
       .from("assignments")
       .select("*")
       .eq("worker_id", workerId)
+      .in("schedule_id", segmenti.data.map((segmento) => segmento.id))
       .gte("data", dal)
       .lte("data", al)
       .order("data"),

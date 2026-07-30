@@ -2,10 +2,10 @@ import { NextResponse } from "next/server"
 
 import {
   ErroreModifichePiano,
-  preparaSalvataggioModifiche,
   validaModificheIntervallo,
   validaModifichePiano,
 } from "@/lib/dati/modifiche-piano"
+import { fineDelMese } from "@/lib/dati/intervallo"
 import { primoDelMese } from "@/lib/solver/tempo"
 import { creaClientServer, ePianificatore } from "@/lib/supabase/server"
 
@@ -69,7 +69,26 @@ export async function PUT(req: Request) {
 
     const sb = await creaClientServer()
     const mesiModificati = [...new Set(modifiche.map((m) => primoDelMese(m.data)))]
-    const piani = await sb.from("schedules").select("id, mese").in("mese", mesiModificati)
+    const pianificazioneDal = dal || primoDelMese(mese)
+    const pianificazioneAl = al || fineDelMese(mese)
+    const run = await sb
+      .from("planning_runs")
+      .select("id, versione")
+      .eq("dal", pianificazioneDal)
+      .eq("al", pianificazioneAl)
+      .maybeSingle()
+    if (run.error) throw run.error
+    if (!run.data) {
+      return NextResponse.json(
+        { errore: "Il piano intervallo non esiste ancora. Rigenera l'intero intervallo prima di modificarlo." },
+        { status: 409 },
+      )
+    }
+    const piani = await sb
+      .from("schedules")
+      .select("id, mese")
+      .eq("planning_run_id", run.data.id)
+      .in("mese", mesiModificati)
     if (piani.error) throw piani.error
     const pianoPerMese = new Map((piani.data ?? []).map((p) => [p.mese, p.id]))
 
@@ -156,77 +175,27 @@ export async function PUT(req: Request) {
       }
     }
 
-    for (const meseModificato of mesiModificati) {
-      if (pianoPerMese.has(meseModificato)) continue
-      const creato = await sb
-        .from("schedules")
-        .upsert(
-          {
-            mese: meseModificato,
-            seed: 1,
-            parametri: dal && al ? ({ dal, al } as never) : undefined,
-          },
-          { onConflict: "mese" },
-        )
-        .select("id, mese")
-        .single()
-      if (creato.error || !creato.data) {
-        throw creato.error ?? new Error("Impossibile creare il piano mensile.")
-      }
-      pianoPerMese.set(creato.data.mese, creato.data.id)
-    }
-
-    for (const meseModificato of mesiModificati) {
-      const scheduleId = pianoPerMese.get(meseModificato) as string
-      const modificheMese = modifiche.filter(
-        (modifica) => primoDelMese(modifica.data) === meseModificato,
+    const applicazione = await sb.rpc("salva_modifiche_intervallo", {
+      p_planning_run_id: run.data.id,
+      p_versione: run.data.versione,
+      p_modifiche: modifiche as never,
+      p_precondizioni: precondizioni as never,
+    })
+    if (applicazione.error) {
+      const stato =
+        applicazione.error.code === "42501" ? 403
+          : applicazione.error.code === "P0002" ? 404
+            : applicazione.error.code === "40001" ? 409
+              : 400
+      return NextResponse.json(
+        {
+          errore:
+            applicazione.error.code === "40001"
+              ? "Il piano è cambiato durante il salvataggio. Ricalcola il preview prima di riprovare."
+              : "Salvataggio delle modifiche non riuscito.",
+        },
+        { status: stato },
       )
-      const { daSalvare, daRimuovere } = preparaSalvataggioModifiche(
-        scheduleId,
-        modificheMese,
-      )
-      if (daSalvare.length > 0) {
-        const salvate = await sb.from("assignments").upsert(daSalvare, {
-          onConflict: "schedule_id,data,worker_id",
-        })
-        if (salvate.error) throw salvate.error
-      }
-
-      const rimozioni = await Promise.all(
-        daRimuovere.map((m) => {
-          const precondizione = precondizioni.find(
-            (p) => p.workerId === m.workerId && p.data === m.data,
-          )
-          let query = sb
-            .from("assignments")
-            .delete()
-            .eq("schedule_id", scheduleId)
-            .eq("worker_id", m.workerId)
-            .eq("data", m.data)
-            .select("id")
-          if (precondizione?.shiftTypeId && precondizione.positionId) {
-            query = query
-              .eq("shift_type_id", precondizione.shiftTypeId)
-              .eq("position_id", precondizione.positionId)
-              .eq("bloccato", false)
-          }
-          return query
-        }),
-      )
-      const rimozioneFallita = rimozioni.find((x) => x.error)
-      if (rimozioneFallita?.error) throw rimozioneFallita.error
-      if (precondizioni.length > 0 && rimozioni.some((x) => (x.data ?? []).length !== 1)) {
-        return NextResponse.json(
-          { errore: "Il piano è cambiato durante l'applicazione. Ricalcola il preview prima di riprovare." },
-          { status: 409 },
-        )
-      }
-
-      const aggiornato = await sb
-        .from("schedules")
-        .update({ aggiornato_il: new Date().toISOString() })
-        .eq("id", scheduleId)
-      if (aggiornato.error) throw aggiornato.error
     }
 
     return NextResponse.json({
