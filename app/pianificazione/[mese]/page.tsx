@@ -18,6 +18,7 @@ import { primoDelMese } from "@/lib/solver/tempo"
 import { creaClientServer } from "@/lib/supabase/server"
 import type { Tables } from "@/lib/supabase/types"
 import BarraAzioni from "./BarraAzioni"
+import CalendarioMese from "./CalendarioMese"
 import DecisioneOreEccedenti from "./DecisioneOreEccedenti"
 import SelettoreIntervallo from "./SelettoreIntervallo"
 import SuggerimentiAI from "./SuggerimentiAI"
@@ -216,22 +217,25 @@ export default async function Pianificazione({
           <div>
             <h1 className="text-2xl font-semibold capitalize">{titolo}</h1>
           </div>
-          {meseCompleto && (
-            <div className="no-stampa flex items-center gap-2 text-sm">
+          <div className="no-stampa flex items-center gap-2 text-sm">
+            {meseCompleto && (
               <Link
                 href={`/pianificazione/${spostaMese(mese, -1)}`}
                 className="bottone py-1"
               >
                 ← precedente
               </Link>
+            )}
+            <CalendarioMese key={mese} mese={mese} />
+            {meseCompleto && (
               <Link
                 href={`/pianificazione/${spostaMese(mese, 1)}`}
                 className="bottone py-1"
               >
                 successivo →
               </Link>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <details className="no-stampa rounded-xl border border-bordo bg-superficie" open={!haPiano}>

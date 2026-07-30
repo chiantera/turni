@@ -15,6 +15,21 @@ const MESI = [
   "dicembre",
 ]
 
+export const MESI_BREVI = [
+  "gen",
+  "feb",
+  "mar",
+  "apr",
+  "mag",
+  "giu",
+  "lug",
+  "ago",
+  "set",
+  "ott",
+  "nov",
+  "dic",
+]
+
 export const GIORNI_BREVI = ["dom", "lun", "mar", "mer", "gio", "ven", "sab"]
 export const GIORNI = [
   "domenica",
@@ -62,6 +77,23 @@ export function spostaMese(iso: string, n: number): string {
   const m = Number(iso.slice(5, 7))
   const d = new Date(Date.UTC(a, m - 1 + n, 1))
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-01`
+}
+
+/** Anno di una data ISO ("2026-08-01" -> 2026). */
+export function annoDiMese(iso: string): number {
+  return Number(iso.slice(0, 4))
+}
+
+/**
+ * I 12 mesi di un anno, in ordine, come primo giorno del mese in ISO.
+ * Base del calendario di selezione: mostra un anno intero invece di
+ * costringere a scorrere un mese alla volta con "precedente"/"successivo".
+ */
+export function mesiDellAnno(anno: number): string[] {
+  return Array.from(
+    { length: 12 },
+    (_, i) => `${anno}-${String(i + 1).padStart(2, "0")}-01`,
+  )
 }
 
 export function ore(n: number): string {
