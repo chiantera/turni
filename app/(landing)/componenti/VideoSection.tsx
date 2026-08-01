@@ -15,20 +15,20 @@ export default function VideoSection() {
         </h2>
 
         <div className="relative w-full max-w-2xl mx-auto mb-6 bg-gray-900 rounded-lg overflow-hidden aspect-video">
+          {/* Il poster copre l'attesa del caricamento e i browser che bloccano
+              l'autoplay. Un <img> dentro <video> non lo farebbe: è contenuto di
+              fallback, e i browser che supportano il tag non lo disegnano mai. */}
           <video
             ref={videoRef}
             className="w-full h-full object-cover"
+            poster="/landing-demo-fallback.png"
+            aria-label="Demo di Turni: dal vincolo scritto in italiano al piano completo"
             autoPlay
             muted
             loop
             playsInline
           >
             <source src="/landing-demo.mp4" type="video/mp4" />
-            <img
-              src="/landing-demo-fallback.png"
-              alt="Demo di Turni"
-              className="w-full h-full object-cover"
-            />
           </video>
 
           <button

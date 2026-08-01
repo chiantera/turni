@@ -102,8 +102,12 @@ lib/
     constants.ts                    → Colors, breakpoints, spacing, typography
 
 public/
-  landing-demo.mp4                  → PLACEHOLDER (replace with actual demo)
-  landing-demo-fallback.png         → PLACEHOLDER (replace with screenshot)
+  landing-demo.mp4                  → Animazione sintetica 15s (da sostituire)
+  landing-demo-fallback.png         → Poster del video
+
+scripts/demo-landing/
+  fotogrammi.html                   → Stato del fotogramma N via ?f=N
+  genera.sh                         → Rende i fotogrammi e codifica l'mp4
 ```
 
 ---
@@ -152,13 +156,15 @@ Use browser DevTools to resize or emulate:
 ## What's TODO (Non-Blocking)
 
 ### 🎥 Video Asset
-- **Current:** Placeholder files (`landing-demo.mp4`, `landing-demo-fallback.png`)
-- **To Do:** Record 15-20 second screen recording showing:
-  1. Input phase (select workers, positions, coverage)
-  2. AI phase ("Marco domenica libera" → constraint extracted)
-  3. Output phase (grid fills, plan confirms, Excel exports)
-- **Format:** MP4 (autoplay-friendly), fallback PNG screenshot
-- **Location:** Replace files in `public/`
+- **Attuale:** animazione sintetica di 15 s (139 KB) + poster, generata da
+  `scripts/demo-landing/genera.sh`. Usa i colori e il ciclo turni veri del
+  progetto — non è una registrazione dell'applicazione.
+- **Erano file da 0 byte:** la sezione mostrava un rettangolo nero, e il
+  middleware rispondeva `307` alle richieste di `.mp4` (estensione assente
+  dal matcher in `proxy.ts`). Entrambe le cose sono corrette.
+- **Da fare:** sostituire con una registrazione vera dello schermo.
+  Scaletta di ripresa, requisiti tecnici e comandi di ricodifica in
+  `docs/video-demo-scaletta.md`.
 
 ### 📧 Newsletter Backend
 - **Current:** UI-only (form accepts email, shows success)

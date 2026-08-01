@@ -1,0 +1,183 @@
+<meta charset="utf-8">
+<title>Turni — fotogrammi demo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1280px; height: 720px; overflow: hidden;
+    background: #FFFFFF;
+    font-family: "DejaVu Sans", system-ui, sans-serif;
+    color: #1F2937;
+  }
+  .scena { padding: 44px 56px; height: 100%; display: flex; flex-direction: column; }
+
+  header { display: flex; align-items: center; justify-content: space-between; }
+  .marchio { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+  .marchio span { color: #3B82F6; }
+
+  .passi { display: flex; align-items: center; gap: 10px; }
+  .passo {
+    width: 30px; height: 30px; border-radius: 999px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700;
+    background: #F3F4F6; color: #6B7280;
+  }
+  .passo.attivo { background: #3B82F6; color: #fff; }
+  .passo.fatto { background: #10B981; color: #fff; }
+  .trattino { width: 26px; height: 2px; background: #E5E7EB; }
+
+  h1 { font-size: 34px; font-weight: 700; margin-top: 26px; letter-spacing: -0.6px; }
+  .occhiello { font-size: 16px; color: #6B7280; margin-top: 6px; }
+
+  .corpo { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+
+  /* --- fase 1 ------------------------------------------------------- */
+  .campo {
+    border: 2px solid #E5E7EB; border-radius: 12px;
+    padding: 20px 22px; font-size: 22px; background: #F9FAFB;
+    min-height: 66px; display: flex; align-items: center;
+  }
+  .campo.attivo { border-color: #3B82F6; background: #fff; }
+  .cursore { display: inline-block; width: 2px; height: 26px; background: #3B82F6; margin-left: 3px; }
+  .cursore.spento { opacity: 0; }
+
+  .vincolo {
+    margin-top: 22px; border: 2px solid #10B981; border-radius: 12px;
+    padding: 16px 20px; background: #ECFDF5;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .spunta {
+    width: 26px; height: 26px; border-radius: 999px; background: #10B981;
+    color: #fff; font-size: 15px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex: 0 0 auto;
+  }
+  .vincolo b { font-size: 18px; }
+  .vincolo small { display: block; color: #6B7280; font-size: 14px; margin-top: 2px; }
+
+  /* --- griglia ------------------------------------------------------ */
+  table { border-collapse: separate; border-spacing: 4px; margin-top: 4px; }
+  th, td { width: 60px; height: 40px; text-align: center; font-size: 15px; border-radius: 7px; }
+  th.giorno { font-size: 13px; color: #6B7280; font-weight: 600; height: 24px; }
+  th.giorno.festivo { color: #ef4444; }
+  th.nome {
+    width: 128px; text-align: left; font-size: 15px; font-weight: 600;
+    padding-left: 4px; color: #1F2937;
+  }
+  td.cella { background: #F3F4F6; }
+  td.piena { font-weight: 700; color: #1F2937; }
+  td.M { background: #fbbf24; }
+  td.P { background: #38bdf8; }
+  td.N { background: #6366f1; color: #fff; }
+  td.R { background: #F9FAFB; color: #D1D5DB; font-weight: 400; }
+  td.marcata { box-shadow: 0 0 0 3px #10B981; }
+
+  .legenda { display: flex; gap: 22px; margin-top: 20px; font-size: 14px; color: #6B7280; }
+  .legenda i { display: inline-block; width: 13px; height: 13px; border-radius: 4px; margin-right: 7px; vertical-align: -1px; }
+
+  .esito {
+    margin-top: 20px; display: flex; align-items: center; gap: 14px;
+    background: #ECFDF5; border: 2px solid #10B981; border-radius: 12px;
+    padding: 15px 20px;
+  }
+  .esito b { font-size: 18px; }
+  .esito small { display: block; color: #6B7280; font-size: 14px; margin-top: 2px; }
+  /* Lo spazio resta occupato anche quando il riquadro non si vede: senza
+     questo la griglia sobbalza al passaggio fra la fase 2 e la 3. */
+  .riservato { visibility: hidden; }
+</style>
+<body></body>
+<script>
+  // Ogni fotogramma è uno stato calcolato da f: nessuna animazione a tempo,
+  // quindi lo screenshot cattura sempre esattamente ciò che deve.
+  const f = Number(new URLSearchParams(location.search).get("f") || 0)
+
+  const CICLO = ["M", "M", "P", "P", "N", "R", "R"]
+  const GIORNI = ["L", "M", "M", "G", "V", "S", "D"]
+  const NOMI = ["Rossi M.", "Bianchi L.", "Verdi A.", "Neri S.", "Gallo P.", "Ferrari C.", "Conti G."]
+  const N_GIORNI = 14
+
+  // 7 lavoratori sfasati di un giorno coprono ogni giornata con esattamente
+  // 2 mattini, 2 pomeriggi, 1 notte e 2 riposi: il rapporto 2:2:1 del modello.
+  const turno = (lav, giorno) => CICLO[(giorno + lav) % 7]
+
+  const FRASE = "Marco è libero la domenica pomeriggio"
+
+  function passi(attivo) {
+    return `<div class="passi">${[1, 2, 3].map((n, i) => {
+      const cls = n < attivo ? "fatto" : n === attivo ? "attivo" : ""
+      return (i ? '<div class="trattino"></div>' : "") +
+        `<div class="passo ${cls}">${n < attivo ? "✓" : n}</div>`
+    }).join("")}</div>`
+  }
+
+  function intestazione(attivo, titolo, occhiello) {
+    return `<header><div class="marchio">Turni<span>.</span></div>${passi(attivo)}</header>
+      <h1>${titolo}</h1><div class="occhiello">${occhiello}</div>`
+  }
+
+  function griglia({ colonne, marcaDomeniche }) {
+    let html = "<table><tr><th class='nome'></th>"
+    for (let g = 0; g < N_GIORNI; g++) {
+      const domenica = g % 7 === 6
+      html += `<th class="giorno${domenica ? " festivo" : ""}">${GIORNI[g % 7]}</th>`
+    }
+    html += "</tr>"
+    for (let l = 0; l < NOMI.length; l++) {
+      html += `<tr><th class="nome">${NOMI[l]}</th>`
+      for (let g = 0; g < N_GIORNI; g++) {
+        if (g >= colonne) { html += '<td class="cella"></td>'; continue }
+        const t = turno(l, g)
+        const marca = marcaDomeniche && l === 0 && g % 7 === 6
+        html += `<td class="cella piena ${t}${marca ? " marcata" : ""}">${t}</td>`
+      }
+      html += "</tr>"
+    }
+    return html + "</table>"
+  }
+
+  const legenda = `<div class="legenda">
+    <span><i style="background:#fbbf24"></i>Mattino 7h</span>
+    <span><i style="background:#38bdf8"></i>Pomeriggio 7h</span>
+    <span><i style="background:#6366f1"></i>Notte 10h</span>
+    <span><i style="background:#F9FAFB;border:1px solid #E5E7EB"></i>Riposo</span>
+  </div>`
+
+  let corpo = ""
+  let testa = ""
+
+  if (f < 18) {
+    // Fase 1 — la frase in italiano diventa un vincolo.
+    const inizio = 2, fine = 12
+    const quota = Math.max(0, Math.min(1, (f - inizio) / (fine - inizio)))
+    const scritto = FRASE.slice(0, Math.round(quota * FRASE.length))
+    const scrivendo = f >= inizio && f <= fine
+    const cursoreAcceso = f % 2 === 0
+    testa = intestazione(1, "Descrivi i vincoli in italiano",
+      "Nessun modulo da compilare: si scrive come si parla.")
+    corpo = `<div class="campo${f >= inizio ? " attivo" : ""}">${scritto}` +
+      (scrivendo || f < inizio ? `<span class="cursore${cursoreAcceso ? "" : " spento"}"></span>` : "") +
+      `</div>` +
+      `<div class="vincolo${f >= 14 ? "" : " riservato"}"><div class="spunta">✓</div><div>
+        <b>Marco Rossi — domenica, turno Pomeriggio: non disponibile</b>
+        <small>L'AI propone il vincolo, tu lo confermi, il solver lo rispetta.</small>
+      </div></div>`
+  } else {
+    const completo = f >= 46
+    if (completo) {
+      // Fase 3 — piano finito, con il vincolo della fase 1 ancora in piedi.
+      testa = intestazione(4, "Piano pronto",
+        "Copertura verificata, ore in equilibrio, pronto da esportare.")
+    } else {
+      testa = intestazione(2, "Il solver decide",
+        "Deterministico: stessi dati, stesso piano. Nessuna sorpresa.")
+    }
+    const quota = Math.min(1, (f - 20) / 22)
+    const colonne = completo ? N_GIORNI : Math.max(0, Math.min(N_GIORNI, Math.ceil(quota * N_GIORNI)))
+    corpo = griglia({ colonne, marcaDomeniche: completo }) + legenda +
+      `<div class="esito${completo ? "" : " riservato"}"><div class="spunta">✓</div><div>
+        <b>Copertura completa — 2 mattini, 2 pomeriggi, 1 notte ogni giorno</b>
+        <small>38 ore a testa. La domenica di Marco Rossi è rimasta libera, come richiesto.</small>
+      </div></div>`
+  }
+
+  document.body.innerHTML = `<div class="scena">${testa}<div class="corpo">${corpo}</div></div>`
+</script>
