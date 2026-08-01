@@ -33,7 +33,10 @@ export default async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const percorso = request.nextUrl.pathname
-  const pubblica = percorso.startsWith("/accedi") || percorso.startsWith("/auth")
+  // La landing vive sulla root ed è il biglietto da visita del prodotto:
+  // deve rispondere a chi un account non ce l'ha ancora.
+  const pubblica =
+    percorso === "/" || percorso.startsWith("/accedi") || percorso.startsWith("/auth")
 
   if (!user && !pubblica) {
     const url = request.nextUrl.clone()
@@ -42,9 +45,11 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  if (user && percorso === "/accedi") {
+  // Chi ha già una sessione non ha niente da leggere sulla pagina di vendita
+  // né sul form di accesso: la sua home è la dashboard.
+  if (user && (percorso === "/" || percorso === "/accedi")) {
     const url = request.nextUrl.clone()
-    url.pathname = "/"
+    url.pathname = "/home"
     url.search = ""
     return NextResponse.redirect(url)
   }

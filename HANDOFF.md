@@ -51,9 +51,16 @@ Post-login hub with quick access to planning features:
 
 ### 🔐 Auth Routing
 
-**Root page (`app/page.tsx`)** checks session status:
-- Authenticated → redirect to `/home` (dashboard)
-- Unauthenticated → redirect to `/` (landing page)
+Lo smistamento sta tutto in **`proxy.ts`** (il middleware), non in una pagina:
+
+- `/`, `/accedi`, `/auth` sono pubbliche; ogni altro percorso senza sessione
+  finisce su `/accedi?da=<percorso>`
+- con una sessione attiva, `/` e `/accedi` rimandano a `/home`
+
+I route group **non** creano segmenti di URL: `(landing)/page.tsx` risponde su
+`/`. Per questo non può esistere anche un `app/page.tsx` — le due pagine
+risolverebbero lo stesso percorso. La separazione pubblico/protetto la fa il
+middleware; i gruppi servono solo a dare layout diversi.
 
 **Route groups:**
 - `(landing)` — Public, no sidebar
@@ -64,11 +71,12 @@ Post-login hub with quick access to planning features:
 ## File Structure
 
 ```
+proxy.ts                            → Middleware: rotte pubbliche e redirect
+
 app/
-  page.tsx                          → Auth redirect logic
   (landing)/
     layout.tsx                      → Landing layout (no sidebar)
-    page.tsx                        → Compose all 8 sections
+    page.tsx                        → Compose all 8 sections (risponde su "/")
     componenti/
       HeroSection.tsx
       VideoSection.tsx
