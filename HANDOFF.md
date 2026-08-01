@@ -36,7 +36,7 @@ A conversion-focused landing page with 8 sections (all Italian, HR-targeted):
 Post-login hub with quick access to planning features:
 
 1. **Welcome Header** — Personalized greeting "Bentornato, [User name]! 👋"
-2. **Stats Row** — 3 KPI cards: Plans this month (3), Hours this month (240), Active workers (15)
+2. **Stats Row** — 3 KPI cards da query reali: piani del mese, ore del mese, lavoratori attivi
 3. **Quick Actions** — 4 button shortcuts: Genera nuovo piano, Visualizza questo mese, Gestisci lavoratori, Gestisci postazioni
 4. **Activity Feed** — Timeline of recent activities (plan generated, worker added, coverage updated)
 
@@ -44,7 +44,7 @@ Post-login hub with quick access to planning features:
 - Next.js App Router route `(authenticated)/home/`
 - Server-side rendering (gets user from session)
 - Auth guard: redirects unauthenticated users to landing page
-- Stats/activity currently placeholder data (TODO: connect to database)
+- Stats da Supabase via `lib/dati/statistiche.ts`; activity feed ancora placeholder
 - Same responsive/accessibility standards as landing page
 
 ---
@@ -159,14 +159,19 @@ Use browser DevTools to resize or emulate:
 - **Action:** POST to `/api/subscribe` or similar, save to database
 
 ### 📊 Dashboard Database Queries
-- **Current:** Placeholder stats (3 plans, 240 hours, 15 workers) and activity feed
-- **To Do:** Replace with real Supabase queries for logged-in user
-- **Files:** `app/(authenticated)/home/page.tsx` lines ~25-45 (TODO comments)
-- **Queries Needed:**
-  - Count plans for user this month
-  - Sum hours assigned this month
-  - Count active workers
-  - Fetch recent activity (plan generation, worker additions, coverage changes)
+- **Stats:** ✅ Fatto — `lib/dati/statistiche.ts` (`statisticheDashboard`)
+  - `pianiMese` — righe `schedules` con `mese` = mese corrente
+  - `oreMese` — somma di `durata_min * peso_ore` sulle assegnazioni del piano
+    più recente del mese, saltando i turni con `conta_nelle_ore = false`
+  - `lavoratoriAttivi` — `workers` con `attivo = true`
+  - Nessun filtro per utente nel codice: ci pensa RLS, quindi il pianificatore
+    vede i totali e il lavoratore le proprie ore sui soli piani pubblicati
+  - Test: `lib/dati/statistiche.test.ts` (parte pura del calcolo ore)
+- **Activity feed:** ancora placeholder
+  - **File:** `app/(authenticated)/home/page.tsx` riga ~19 (commento TODO)
+  - **Da recuperare:** generazioni piano, lavoratori aggiunti, coperture modificate.
+    Manca una tabella di audit: oggi `creato_il`/`aggiornato_il` su
+    `planning_runs`, `workers` e `positions` sono l'unica fonte disponibile.
 
 ### 💬 Real Testimonials
 - **Current:** 2 placeholder quotes (Marco R., Lucia B.)
@@ -217,7 +222,7 @@ Before considering this "done":
 - [ ] Sign up/login works
 - [ ] Dashboard appears after login
 - [ ] Dashboard shows welcome header with user name
-- [ ] Stats show (3, 240, 15)
+- [ ] Stats riflettono i dati reali del mese corrente (0 ovunque su DB vuoto)
 - [ ] Quick action buttons navigate to main pages
 - [ ] Activity feed displays
 - [ ] Responsive on mobile (375px), tablet (768px), desktop (1024px+)

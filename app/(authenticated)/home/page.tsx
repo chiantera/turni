@@ -1,19 +1,20 @@
-import { creaClientServer } from "@/lib/supabase/server"
+import { statisticheDashboard } from "@/lib/dati/statistiche"
+import { creaClientServer, utenteCorrente } from "@/lib/supabase/server"
 import WelcomeHeader from "./componenti/WelcomeHeader"
 import StatsRow from "./componenti/StatsRow"
 import QuickActions from "./componenti/QuickActions"
 import ActivityFeed from "./componenti/ActivityFeed"
 
+// Le statistiche dipendono dai cookie di sessione: niente cache fra utenti.
+export const dynamic = "force-dynamic"
+
 export default async function DashboardPage() {
   const supabase = await creaClientServer()
 
-  const { data: { session } } = await supabase.auth.getSession()
-  const userName = session?.user?.user_metadata?.name || "Utente"
+  const corrente = await utenteCorrente()
+  const userName = corrente?.profilo?.nome || "Utente"
 
-  // TODO: Fetch stats from database
-  const plansThisMonth = 3
-  const hoursThisMonth = 240
-  const workersActive = 15
+  const stats = await statisticheDashboard(supabase)
 
   // TODO: Fetch recent activity from database
   const recentActivities = [
@@ -41,9 +42,9 @@ export default async function DashboardPage() {
     <div className="p-8">
       <WelcomeHeader userName={userName} />
       <StatsRow
-        plansThisMonth={plansThisMonth}
-        hoursThisMonth={hoursThisMonth}
-        workersActive={workersActive}
+        plansThisMonth={stats.pianiMese}
+        hoursThisMonth={stats.oreMese}
+        workersActive={stats.lavoratoriAttivi}
       />
       <QuickActions />
       <ActivityFeed activities={recentActivities} />
