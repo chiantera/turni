@@ -57,6 +57,15 @@ export default async function proxy(request: NextRequest) {
   return response
 }
 
+// Tutto ciò che sta in public/ è per definizione servito a chiunque: se il
+// middleware lo intercetta finisce reindirizzato al login. L'elenco copriva
+// solo quattro formati di immagine, e infatti il video della landing tornava
+// un 307 verso /accedi invece del filmato.
+//
+// Next legge questo oggetto staticamente a build time: dev'essere un letterale.
+// Comporre la lista di estensioni in una variabile fa fallire la compilazione.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|webp)$).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|mp4|webm|woff|woff2|txt|xml)$).*)",
+  ],
 }
