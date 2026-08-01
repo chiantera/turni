@@ -1,7 +1,8 @@
 # Turni
 
-Pianificazione dei turni di lavoro per **n lavoratori** su **m postazioni**, con
-assistente in linguaggio naturale.
+**Pianificazione dei turni di lavoro** per **n lavoratori** su **m postazioni**, con assistente in linguaggio naturale.
+
+L'app converte richieste naturali in vincoli strutturati, le valida insieme all'utente, poi un **solver deterministico** genera il piano garantendo **copertura, monte ore e riposi minimi**. Supporta intervalli di date flessibili (da 1 giorno a 366), modifiche manuali, riduzione ore eccedenti e export Excel + iCalendar.
 
 **Italiano** · [English](#english)
 
@@ -32,6 +33,17 @@ ciclo non chiude: servirebbero 7 persone per coprire le 7 notti, generando 14
 mattini disponibili contro i 7 necessari. L'app se ne accorge e lo dice **prima**
 di generare, invece di produrre un piano bucato senza spiegazione.
 
+## Come funziona in pratica
+
+1. **Setup** — Configura lavoratori, postazioni, copertura richiesta (rapporto mattina:pomeriggio:notte) e vincoli base (riposi minimi, giorni consecutivi, festività)
+2. **Richieste naturali** — Scrivi in italiano cosa serve: _«Marco Rossi ha bisogno della domenica pomeriggio libera»_ → l'AI estrae il vincolo → confermi
+3. **Genera il piano** — Scegli un intervallo (mese, due mesi, o date personalizzate) → l'app valida fattibilità → il solver crea la griglia assegnazioni
+4. **Modifica se necessario** — Drag-drop interattivo nella griglia per aggiustare turni, oppure chiedi suggerimenti all'AI per risolvere conflitti
+5. **Ore eccedenti** — Se la capacità contrattuale supera la domanda, scegli tra riduzione concentrata o distribuita
+6. **Salva ed export** — Salva il piano a Supabase e scarica in Excel o calendari iCalendar
+
+Tutto è transazionale: conflitti di versione provocano rollback automatico, e le modifiche non salvate sono sempre visibili prima di applicarle.
+
 ## Architettura
 
 **L'AI non genera i turni.** Traduce le richieste in italiano
@@ -40,11 +52,47 @@ strutturati, che l'utente conferma; poi un **solver deterministico** costruisce
 il piano.
 
 ```
-  AI propone -> l'app valida -> l'utente conferma -> il solver decide
+  AI propone → l'app valida → l'utente conferma → il solver decide
 ```
 
 Un modello linguistico che producesse direttamente la griglia non potrebbe
 garantire copertura, monte ore o riposi, e non sarebbe riproducibile.
+
+### Struttura di progetto
+
+```
+📦 turni/
+│
+├─ 🎨 App (Next.js App Router)
+│  ├─ 🔑 accedi/                          Autenticazione
+│  ├─ 📅 pianificazione/[mese]           Griglia turni con intervallo dal/al
+│  ├─ 👥 lavoratori/                      Gestione lavoratori
+│  ├─ 🏢 postazioni/                      Gestione postazioni
+│  ├─ 📍 copertura/                       Matrice di copertura richiesta
+│  ├─ 🔒 vincoli/                         Riposi minimi, giorni consecutivi, etc
+│  ├─ ⚙️  impostazioni/                    Ciclo di base 7h/7h/10h
+│  ├─ 📈 riepilogo/                       Statistiche e ore eccedenti
+│  ├─ 🎛️ componenti/                      Componenti riutilizzabili
+│  └─ 🔌 api/
+│     ├─ ai/                              Estrazione vincoli da linguaggio naturale
+│     ├─ piano/                           Generazione, salvataggio, riduzione
+│     ├─ vincoli/                         Validazione e applicazione
+│     └─ export/                          Excel (xlsx) + iCalendar (ics)
+│
+├─ 📚 lib/ (Librerie core)
+│  ├─ 🤖 ai/                              Claude API, DSL, estrazione, suggerimenti
+│  ├─ 📊 dati/                            Formattazione, intervalli, piano
+│  ├─ 🔧 solver/                          Ciclico, greedy, ricerca, fattibilità
+│  └─ 🗄️  supabase/                       Client isomorphic, admin, RPC
+│
+├─ 🗄️  supabase/migrations/               Schema PostgreSQL versionato
+│  ├─ planning_runs, planning_rows        Piano: intervallo dal/al, versione
+│  ├─ assegnazioni                        Lavoratore × data × turno × ore
+│  ├─ lavoratori, postazioni, turni       Anagrafi
+│  └─ vincoli                             Tipo, lavoratore_id, parametri
+│
+└─ 🧪 test/, public/, configurazione
+```
 
 ### Ore contrattuali eccedenti
 
@@ -378,25 +426,15 @@ npm run typecheck
 npm run lint
 ```
 
-## Struttura
+## Struttura dettagliata
 
-```
-app/
-  pianificazione/[mese]/   griglia e intervallo inclusivo via query dal/al
-  vincoli/                 elenco vincoli + assistente in linguaggio naturale
-  lavoratori|postazioni|turni|copertura|impostazioni/
-  api/piano/genera         invoca il solver e salva il piano
-  api/piano/fattibilita    verifica dell'organico, prima di generare
-  api/piano/assegnazioni   valida e salva le modifiche manuali alla griglia
-  api/ai/vincoli           estrazione (propone, non scrive)
-  api/vincoli              salvataggio dei vincoli confermati
-  api/export/xlsx|ics
-lib/
-  solver/    modello, vincoli, ciclico, greedy, ricerca, fattibilità
-  ai/        registro provider, DSL, estrazione
-  dati/      accesso a Supabase, formattazione italiana
-supabase/migrations/
-```
+Vedi la **mappa di progetto** nella sezione _Architettura_ sopra. In breve:
+
+- **`app/`** — pagine Next.js, componenti, route API (pianificazione, vincoli, export)
+- **`lib/solver/`** — tre fasi del solver (ciclico, greedy, ricerca locale)
+- **`lib/ai/`** — registro provider, DSL di vincoli, estrazione da linguaggio naturale
+- **`lib/dati/`** — accesso Supabase, formattazione, navigazione intervalli
+- **`supabase/migrations/`** — schema PostgreSQL con RLS
 
 ## Base dati
 
@@ -411,10 +449,22 @@ piani pubblicati.
 
 # Turni — English
 
-Work-shift planning for **n workers** across **m positions**, with a
-natural-language assistant.
+**Work-shift planning** for **n workers** across **m positions**, with a natural-language assistant.
+
+Convert requests into structured constraints, validate them together with users, then a **deterministic solver** generates the schedule—guaranteeing **coverage, contract hours, and minimum rest**. Supports flexible date ranges (1 day to 366), manual edits, excess-hours reduction, and Excel + iCalendar exports.
 
 [Italiano](#turni) · **English**
+
+## How it works
+
+1. **Setup** — Configure workers, positions, required coverage (ratio: morning:afternoon:night), and base constraints (minimum rest days, consecutive shifts, holidays)
+2. **Natural requests** — Write in plain English what you need: _"Marco Rossi needs Sunday afternoon off"_ → AI extracts the constraint → you confirm
+3. **Generate schedule** — Pick a date range (a month, two months, or custom) → app validates feasibility → solver builds the shift grid
+4. **Adjust if needed** — Interactive drag-drop in the grid to move shifts, or ask AI for suggestions to resolve conflicts
+5. **Excess hours** — If contractual capacity exceeds demand, choose between concentrated or distributed reduction
+6. **Save and export** — Persist to Supabase and download as Excel or iCalendar files
+
+Everything is transactional: version conflicts trigger automatic rollback, and unsaved changes are always visible before you apply them.
 
 ## Reference rotation
 
@@ -451,11 +501,47 @@ Rossi needs Sunday afternoon off” into structured constraints for the user to
 confirm. A scheduling solver then builds the plan.
 
 ```
-  AI proposes -> the app validates -> the user confirms -> the solver decides
+  AI proposes → the app validates → the user confirms → the solver decides
 ```
 
 Having a language model produce the grid directly would not guarantee coverage,
 contract hours, or legal rest periods, and its result would not be reproducible.
+
+### Project structure
+
+```
+📦 turni/
+│
+├─ 🎨 App (Next.js App Router)
+│  ├─ 🔑 accedi/                          Authentication
+│  ├─ 📅 pianificazione/[mese]           Schedule grid with dal/al date range
+│  ├─ 👥 lavoratori/                      Worker management
+│  ├─ 🏢 postazioni/                      Position management
+│  ├─ 📍 copertura/                       Required coverage matrix
+│  ├─ 🔒 vincoli/                         Constraints (min rest, consecutive days)
+│  ├─ ⚙️  impostazioni/                    Settings (7h/7h/10h cycle)
+│  ├─ 📈 riepilogo/                       Overview and excess hours
+│  ├─ 🎛️ componenti/                      Reusable components
+│  └─ 🔌 api/
+│     ├─ ai/                              Natural language constraint extraction
+│     ├─ piano/                           Generation, persistence, reduction
+│     ├─ vincoli/                         Validation and application
+│     └─ export/                          Excel (xlsx) + iCalendar (ics)
+│
+├─ 📚 lib/ (Core libraries)
+│  ├─ 🤖 ai/                              Claude API, DSL, extraction, suggestions
+│  ├─ 📊 dati/                            Formatting, date ranges, schedule data
+│  ├─ 🔧 solver/                          Cyclic, greedy, local search, feasibility
+│  └─ 🗄️  supabase/                       Isomorphic client, admin, RPC calls
+│
+├─ 🗄️  supabase/migrations/               Versioned PostgreSQL schema
+│  ├─ planning_runs, planning_rows        Schedule: date range (dal/al), version
+│  ├─ assegnazioni                        Worker × date × shift × hours
+│  ├─ lavoratori, postazioni, turni       Records
+│  └─ vincoli                             Type, worker_id, parameters
+│
+└─ 🧪 test/, public/, configuration
+```
 
 ### Date-range planning
 
@@ -716,23 +802,13 @@ npm run lint      # ESLint
 
 ## Project structure
 
-```
-app/
-  pianificazione/[mese]/   grid and inclusive range via dal/al query parameters
-  vincoli/                 constraints and natural-language assistant
-  lavoratori|postazioni|turni|copertura|impostazioni/
-  api/piano/genera         invoke the solver and save a schedule
-  api/piano/fattibilita    check staffing before generation
-  api/piano/assegnazioni   validate and persist manual grid changes
-  api/ai/vincoli           extract proposals without writing them
-  api/vincoli              save confirmed constraints
-  api/export/xlsx|ics
-lib/
-  solver/    model, constraints, rotation, greedy fill, local search, feasibility
-  ai/        provider registry, DSL, extraction
-  dati/      Supabase access and Italian formatting
-supabase/migrations/
-```
+See the **project map** in the _Architecture_ section above. In brief:
+
+- **`app/`** — Next.js pages, components, API routes (planning, constraints, export)
+- **`lib/solver/`** — three phases of the solver (cyclic, greedy, local search)
+- **`lib/ai/`** — provider registry, constraint DSL, natural language extraction
+- **`lib/dati/`** — Supabase access, formatting, date-range navigation
+- **`supabase/migrations/`** — PostgreSQL schema with RLS
 
 ## Database
 
