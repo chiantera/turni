@@ -64,6 +64,29 @@ garantire copertura, monte ore o riposi, e non sarebbe riproducibile.
 📦 turni/
 │
 ├─ 🎨 App (Next.js App Router)
+│  ├─ 🌐 (landing)/                       Landing page pubblica (pre-login)
+│  │  ├─ page.tsx                         Composizione 8 sezioni
+│  │  ├─ layout.tsx                       Layout senza sidebar
+│  │  └─ componenti/
+│  │     ├─ HeroSection.tsx               Hero con dual CTA
+│  │     ├─ VideoSection.tsx              Demo video autoplay+muted
+│  │     ├─ ProblemSolution.tsx           2-col problem+solution
+│  │     ├─ FeaturesCards.tsx             3-card feature grid
+│  │     ├─ Testimonials.tsx              Testimonial cards
+│  │     ├─ FinalCTA.tsx                  CTA + newsletter
+│  │     ├─ FAQ.tsx                       Accordion FAQ
+│  │     └─ Footer.tsx                    Dark footer
+│  │
+│  ├─ 🔐 (authenticated)/                Dashboard autenticato (post-login)
+│  │  ├─ layout.tsx                       Layout con auth guard
+│  │  └─ home/
+│  │     ├─ page.tsx                      Dashboard hub
+│  │     └─ componenti/
+│  │        ├─ WelcomeHeader.tsx          Greeting personalizzato
+│  │        ├─ StatsRow.tsx               3-KPI stat grid
+│  │        ├─ QuickActions.tsx           4 scorciatoie feature
+│  │        └─ ActivityFeed.tsx           Timeline attività recente
+│  │
 │  ├─ 🔑 accedi/                          Autenticazione
 │  ├─ 📅 pianificazione/[mese]           Griglia turni con intervallo dal/al
 │  ├─ 👥 lavoratori/                      Gestione lavoratori
@@ -83,6 +106,9 @@ garantire copertura, monte ore o riposi, e non sarebbe riproducibile.
 │  ├─ 🤖 ai/                              Claude API, DSL, estrazione, suggerimenti
 │  ├─ 📊 dati/                            Formattazione, intervalli, piano
 │  ├─ 🔧 solver/                          Ciclico, greedy, ricerca, fattibilità
+│  ├─ 🎨 landing/                         Copy e design constants landing page
+│  │  ├─ copy.ts                          Testi italiani (hero, features, FAQ, etc)
+│  │  └─ constants.ts                     Colori, breakpoints, spacing, tipografia
 │  └─ 🗄️  supabase/                       Client isomorphic, admin, RPC
 │
 ├─ 🗄️  supabase/migrations/               Schema PostgreSQL versionato
