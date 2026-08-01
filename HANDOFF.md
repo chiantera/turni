@@ -38,13 +38,13 @@ Post-login hub with quick access to planning features:
 1. **Welcome Header** — Personalized greeting "Bentornato, [User name]! 👋"
 2. **Stats Row** — 3 KPI cards da query reali: piani del mese, ore del mese, lavoratori attivi
 3. **Quick Actions** — 4 button shortcuts: Genera nuovo piano, Visualizza questo mese, Gestisci lavoratori, Gestisci postazioni
-4. **Activity Feed** — Timeline of recent activities (plan generated, worker added, coverage updated)
+4. **Activity Feed** — Cronologia reale: piani generati o aggiornati, lavoratori e postazioni aggiunti
 
 **Tech:**
 - Next.js App Router route `(authenticated)/home/`
 - Server-side rendering (gets user from session)
 - Auth guard: redirects unauthenticated users to landing page
-- Stats da Supabase via `lib/dati/statistiche.ts`; activity feed ancora placeholder
+- Stats e activity feed da Supabase (`lib/dati/statistiche.ts`, `lib/dati/attivita.ts`)
 - Same responsive/accessibility standards as landing page
 
 ---
@@ -131,9 +131,9 @@ npm run dev
 2. After login, should auto-redirect to `/home`
 3. Dashboard should display:
    - Welcome header with your name
-   - Stats row with sample numbers (3 plans, 240 hours, 15 workers)
+   - Stats row con i dati reali del mese corrente
    - Quick action buttons linking to main features
-   - Activity feed with sample timeline
+   - Activity feed con la cronologia reale (vuoto se il database è vuoto)
 4. Click quick action buttons → should navigate to respective pages
 
 ### 4. Test Responsive Design
@@ -175,11 +175,17 @@ Use browser DevTools to resize or emulate:
   - Nessun filtro per utente nel codice: ci pensa RLS, quindi il pianificatore
     vede i totali e il lavoratore le proprie ore sui soli piani pubblicati
   - Test: `lib/dati/statistiche.test.ts` (parte pura del calcolo ore)
-- **Activity feed:** ancora placeholder
-  - **File:** `app/(authenticated)/home/page.tsx` riga ~19 (commento TODO)
-  - **Da recuperare:** generazioni piano, lavoratori aggiunti, coperture modificate.
-    Manca una tabella di audit: oggi `creato_il`/`aggiornato_il` su
-    `planning_runs`, `workers` e `positions` sono l'unica fonte disponibile.
+- **Activity feed:** ✅ Fatto — `lib/dati/attivita.ts` (`attivitaRecenti`)
+  - Ricostruito dai timestamp esistenti, senza tabella di audit: `aggiornato_il`
+    di `planning_runs`, `creato_il` di `workers` e `positions`
+  - I piani con `versione > 1` si leggono come "aggiornato" invece di "generato"
+  - Filtro per ruolo di nuovo a carico di RLS: il lavoratore vede solo i piani
+    pubblicati (`planning runs lettura` in `20260730000001_planning_runs.sql`)
+  - Test: `lib/dati/attivita.test.ts`
+  - **Limite noto:** i timestamp di riga dicono *quando* qualcosa è stato creato
+    o toccato, non quante volte né da chi, e le modifiche alla copertura non
+    lasciano traccia (`coverage_rules` non ha colonne temporali). Per una
+    cronologia vera servirebbe una tabella di audit.
 
 ### 💬 Real Testimonials
 - **Current:** 2 placeholder quotes (Marco R., Lucia B.)

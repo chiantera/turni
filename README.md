@@ -105,6 +105,8 @@ garantire copertura, monte ore o riposi, e non sarebbe riproducibile.
 ├─ 📚 lib/ (Librerie core)
 │  ├─ 🤖 ai/                              Claude API, DSL, estrazione, suggerimenti
 │  ├─ 📊 dati/                            Formattazione, intervalli, piano
+│  │  ├─ statistiche.ts                   KPI dashboard (piani, ore, lavoratori)
+│  │  └─ attivita.ts                      Cronologia dai timestamp di riga
 │  ├─ 🔧 solver/                          Ciclico, greedy, ricerca, fattibilità
 │  ├─ 🎨 landing/                         Copy e design constants landing page
 │  │  ├─ copy.ts                          Testi italiani (hero, features, FAQ, etc)

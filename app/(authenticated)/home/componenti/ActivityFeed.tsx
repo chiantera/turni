@@ -2,7 +2,7 @@ interface Activity {
   id: string
   description: string
   timestamp: Date
-  type: "plan" | "worker" | "coverage"
+  type: "plan" | "worker" | "position"
 }
 
 interface ActivityFeedProps {
