@@ -1,6 +1,5 @@
 import Link from "next/link"
 import { LANDING_COPY } from "@/lib/landing/copy"
-import { COLORS } from "@/lib/landing/constants"
 
 export default function Footer() {
   return (

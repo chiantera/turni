@@ -16,24 +16,27 @@ export default async function DashboardPage() {
 
   const stats = await statisticheDashboard(supabase)
 
-  // TODO: Fetch recent activity from database
+  // TODO: leggere l'attività recente dal database (serve una tabella di audit).
+  // Le date sono fisse: derivarle da Date.now() a ogni render viola le regole
+  // di purezza di React e, su dati inventati, "2 giorni fa" resta comunque una
+  // finzione che invecchia da sola.
   const recentActivities = [
     {
       id: "1",
       description: "Piano per 1-31 agosto generato",
-      timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      timestamp: new Date("2026-07-30T09:00:00Z"),
       type: "plan" as const,
     },
     {
       id: "2",
       description: 'Lavoratore "Marco Rossi" aggiunto',
-      timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+      timestamp: new Date("2026-07-25T09:00:00Z"),
       type: "worker" as const,
     },
     {
       id: "3",
       description: 'Copertura aggiornata per "Reception"',
-      timestamp: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+      timestamp: new Date("2026-07-18T09:00:00Z"),
       type: "coverage" as const,
     },
   ]
