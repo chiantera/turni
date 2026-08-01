@@ -1,4 +1,4 @@
-import { spostaMese } from "./formato"
+import { dataEstesa, nomeMese, spostaMese } from "./formato"
 import {
   aggiungiGiorni,
   differenzaGiorni,
@@ -89,6 +89,23 @@ export function mesiIntervallo(dal: string, al: string): string[] {
     mesi.push(corrente)
   }
   return mesi
+}
+
+/** L'intervallo coincide esattamente con un mese di calendario. */
+export function copreMeseIntero(dal: string, al: string): boolean {
+  const mesi = mesiIntervallo(dal, al)
+  return mesi.length === 1 && dal === mesi[0] && al === fineDelMese(dal)
+}
+
+/**
+ * Come si chiama un intervallo di pianificazione quando lo si mostra.
+ * Un mese intero prende il nome del mese ("agosto 2026"); tutto il resto
+ * si scrive per esteso ("1 agosto 2026 – 15 agosto 2026").
+ */
+export function etichettaIntervallo(dal: string, al: string): string {
+  return copreMeseIntero(dal, al)
+    ? nomeMese(dal)
+    : `${dataEstesa(dal)} – ${dataEstesa(al)}`
 }
 
 export function limitiMensiliIntervallo(dal: string, al: string) {

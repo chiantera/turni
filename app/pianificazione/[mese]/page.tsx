@@ -2,16 +2,12 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import Navigazione from "@/app/componenti/Navigazione"
+import { nomeMese, spostaMese } from "@/lib/dati/formato"
 import {
-  dataEstesa,
-  nomeMese,
-  spostaMese,
-} from "@/lib/dati/formato"
-import {
-  fineDelMese,
+  copreMeseIntero,
+  etichettaIntervallo,
   giorniIntervallo,
   intervalloDaParametri,
-  mesiIntervallo,
   segnalazioneRilevante,
 } from "@/lib/dati/intervallo"
 import { primoDelMese } from "@/lib/solver/tempo"
@@ -111,7 +107,6 @@ export default async function Pianificazione({
   const { dal, al } = intervallo
   const vista = parametri.vista === "postazione" ? "postazione" : "lavoratore"
   const giorni = giorniIntervallo(dal, al)
-  const mesi = mesiIntervallo(dal, al)
 
   const sb = await creaClientServer()
   const planningRun = await sb
@@ -199,11 +194,8 @@ export default async function Pianificazione({
     typeof riferimentiCapacita.oreEccedenti === "number"
       ? riferimentiCapacita.oreEccedenti
       : null
-  const meseCompleto =
-    mesi.length === 1 && dal === mesi[0] && al === fineDelMese(dal)
-  const titolo = meseCompleto
-    ? nomeMese(dal)
-    : `${dataEstesa(dal)} – ${dataEstesa(al)}`
+  const meseCompleto = copreMeseIntero(dal, al)
+  const titolo = etichettaIntervallo(dal, al)
   const haPiano = (piani.data ?? []).length > 0
   const versionePiano = (piani.data ?? [])
     .map((piano) => `${piano.id}:${piano.aggiornato_il}`)

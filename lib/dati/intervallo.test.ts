@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 
 import {
   ErroreIntervalloPianificazione,
+  copreMeseIntero,
+  etichettaIntervallo,
   giorniIntervallo,
   intervalloDaParametri,
   intervalloDueMesi,
@@ -92,6 +94,27 @@ describe("intervallo di pianificazione", () => {
   it("rifiuta date ISO inesistenti", () => {
     expect(() => validaIntervallo("2026-02-30", "2026-03-01")).toThrow(
       ErroreIntervalloPianificazione,
+    )
+  })
+
+  it("riconosce un intervallo che copre esattamente un mese", () => {
+    expect(copreMeseIntero("2026-08-01", "2026-08-31")).toBe(true)
+    expect(copreMeseIntero("2026-02-01", "2026-02-28")).toBe(true)
+    expect(copreMeseIntero("2026-08-01", "2026-08-30")).toBe(false)
+    expect(copreMeseIntero("2026-08-02", "2026-08-31")).toBe(false)
+    expect(copreMeseIntero("2026-08-01", "2026-09-30")).toBe(false)
+  })
+
+  it("etichetta un mese intero con il nome del mese", () => {
+    expect(etichettaIntervallo("2026-08-01", "2026-08-31")).toBe("agosto 2026")
+  })
+
+  it("etichetta per esteso gli intervalli parziali e a cavallo di due mesi", () => {
+    expect(etichettaIntervallo("2026-08-01", "2026-08-15")).toBe(
+      "1 agosto 2026 – 15 agosto 2026",
+    )
+    expect(etichettaIntervallo("2026-08-01", "2026-09-30")).toBe(
+      "1 agosto 2026 – 30 settembre 2026",
     )
   })
 })
