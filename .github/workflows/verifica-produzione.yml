@@ -1,0 +1,48 @@
+name: Verifica produzione
+
+# Il CI guarda il sorgente. Questo guarda il sistema acceso, che è dove si sono
+# nascosti i guasti peggiori: la landing irraggiungibile perché il middleware la
+# reindirizzava, il video che tornava 307 perché mp4 non era fra le estensioni
+# escluse, due asset da 0 byte, un endpoint che il middleware bloccava. Nessuno
+# di questi rompeva la compilazione.
+
+on:
+  # Vercel crea una deployment su GitHub a ogni push: quando passa a "success"
+  # il sito è già in linea ed è il momento giusto per interrogarlo.
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: URL da verificare
+        required: false
+        default: https://turni-psi.vercel.app
+  # I progetti Supabase del piano gratuito vanno in pausa dopo un periodo di
+  # inattività, e un database in pausa spegne l'applicazione senza che nessuno
+  # abbia toccato una riga di codice. Un giro al giorno se ne accorge.
+  schedule:
+    - cron: "0 7 * * *"
+
+jobs:
+  fumo:
+    # Su deployment_status il workflow parte a ogni cambio di stato, anche
+    # "pending" e "failure": senza questo filtro verificherebbe un sito che sta
+    # ancora costruendo.
+    if: >
+      github.event_name != 'deployment_status' ||
+      github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scegli l'indirizzo
+        id: indirizzo
+        run: |
+          url="${{ inputs.url }}"
+          [ -n "$url" ] || url="https://turni-psi.vercel.app"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Verifico $url"
+
+      - name: Smoke test
+        run: ./scripts/verifica-produzione.sh "${{ steps.indirizzo.outputs.url }}"

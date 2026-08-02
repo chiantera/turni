@@ -121,9 +121,15 @@ garantire copertura, monte ore o riposi, e non sarebbe riproducibile.
 │  ├─ lavoratori, postazioni, turni       Anagrafi
 │  └─ vincoli                             Tipo, lavoratore_id, parametri
 │
-├─ 🎬 scripts/demo-landing/               Genera il video demo della landing
-│  ├─ fotogrammi.html                     Stato del fotogramma N via ?f=N
-│  └─ genera.sh                           Rende i fotogrammi, codifica l'mp4
+├─ 🎬 scripts/
+│  ├─ verifica-produzione.sh              Smoke test sul sito in linea
+│  └─ demo-landing/                       Genera il video demo della landing
+│     ├─ fotogrammi.html                  Stato del fotogramma N via ?f=N
+│     └─ genera.sh                        Rende i fotogrammi, codifica l'mp4
+│
+├─ 🤖 .github/workflows/
+│  ├─ ci.yml                              Tipi, lint, test, build su ogni push
+│  └─ verifica-produzione.yml             Smoke test dopo il deploy e ogni giorno
 │
 └─ 🧪 test/, public/, configurazione
 ```

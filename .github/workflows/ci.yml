@@ -1,0 +1,63 @@
+name: CI
+
+# Il lint è rimasto rosso su main per giorni senza che nessuno se ne accorgesse,
+# e una migrazione con un errore di sintassi è passata inosservata perché
+# nessuno l'aveva più rieseguita. Il punto di questo workflow è che la verifica
+# non dipenda più da chi si ricorda di lanciarla — in locale `npm run lint`
+# impiega oltre quattro minuti, e le verifiche lente smettono di essere eseguite.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verifica:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      # Il build non contatta Supabase: le uniche pagine prerenderizzate sono la
+      # landing e l'informativa, che non leggono dati. Questi valori servono solo
+      # a evitare che un domani un prerender in più fallisca con un errore
+      # incomprensibile invece che con un 401 chiaro.
+      NEXT_PUBLIC_SUPABASE_URL: https://esempio.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: chiave-fittizia-per-il-build
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Installa le dipendenze
+        run: npm ci
+
+      # Ogni passo gira anche se il precedente fallisce: sapere subito che sia
+      # i tipi sia i test sono rotti evita tre giri di push per scoprirlo.
+      - name: Tipi
+        id: tipi
+        if: always()
+        run: npm run typecheck
+
+      - name: Lint
+        id: lint
+        if: always()
+        run: npm run lint
+
+      - name: Test
+        id: test
+        if: always()
+        run: npm test
+
+      - name: Build
+        id: build
+        if: always()
+        run: npm run build

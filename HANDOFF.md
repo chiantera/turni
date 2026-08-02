@@ -153,6 +153,39 @@ Use browser DevTools to resize or emulate:
 
 ---
 
+## Verifiche automatiche
+
+Due workflow, con due bersagli diversi.
+
+**`.github/workflows/ci.yml`** — su ogni push e pull request esegue tipi, lint,
+test e build. Ogni passo gira anche se il precedente fallisce, così un giro
+solo dice tutto quello che è rotto. Esiste perché il lint è rimasto rosso su
+`main` per giorni: in locale impiega oltre quattro minuti, e una verifica lenta
+smette di essere eseguita.
+
+**`.github/workflows/verifica-produzione.yml`** — dopo ogni deploy riuscito, su
+richiesta, e una volta al giorno alle 07:00 UTC. Lancia
+`scripts/verifica-produzione.sh`, che interroga il sito in linea.
+
+Il giro giornaliero non è ridondante: i progetti Supabase del piano gratuito
+vanno in pausa dopo un periodo di inattività — tre degli altri progetti
+dell'organizzazione sono già `INACTIVE` — e un database in pausa spegne
+l'applicazione senza che nessuno abbia toccato una riga di codice.
+
+Lo smoke test si può lanciare anche a mano, contro qualunque ambiente:
+
+```bash
+./scripts/verifica-produzione.sh                          # produzione
+./scripts/verifica-produzione.sh http://localhost:3000    # locale
+```
+
+**Ogni controllo corrisponde a un guasto realmente accaduto**, ed è annotato con
+quale. Aggiungendone uno, va aggiunta anche la riga che spiega cosa è successo:
+serve a distinguere gli invarianti veri dalle asserzioni difensive scritte per
+abitudine.
+
+---
+
 ## Il disallineamento del database (risolto il 2 agosto 2026)
 
 Per giorni il database di produzione è stato indietro di due migrazioni rispetto
