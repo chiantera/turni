@@ -4,7 +4,7 @@ export const LANDING_COPY = {
     headlineSecond: "Risolvi in minuti, non ore.",
     subheader:
       "Pianificazione automatica con assistente in italiano e solver deterministico. Copertura, monte ore e riposi verificati prima che il piano ti venga mostrato. Export in Excel e iCalendar.",
-    ctaPrimary: "Inizia gratis",
+    ctaPrimary: "Richiedi un accesso",
     ctaSecondary: "Guarda la demo",
   },
   video: {
@@ -89,9 +89,13 @@ export const LANDING_COPY = {
   },
   cta: {
     headline: "Pronto a risolvere i turni?",
-    subheader: "Accesso gratuito, niente carte. Setup in 10 minuti.",
-    button: "Inizia gratis",
-    newsletter: "Ricevi tips sulla pianificazione",
+    // La beta è a inviti: le registrazioni sono chiuse finché il database non
+    // sa separare un'azienda dall'altra. Promettere un accesso immediato
+    // manderebbe le persone su un form che non possono usare.
+    subheader:
+      "La beta è a inviti e si usa gratis. Lasciaci l'indirizzo: ti scriviamo quando c'è posto.",
+    button: "Richiedi un accesso",
+    newsletter: "Lasciaci il tuo indirizzo",
     newsletterPlaceholder: "nome@azienda.it",
     newsletterBottone: "Iscriviti",
     newsletterInvio: "Invio…",

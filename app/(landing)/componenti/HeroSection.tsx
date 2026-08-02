@@ -35,7 +35,7 @@ export default function HeroSection({ onDemoClick }: HeroSectionProps) {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <Link
-            href="/accedi?action=signup"
+            href="#richiedi-accesso"
             className="px-8 py-3 bg-white text-blue-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors"
           >
             {LANDING_COPY.hero.ctaPrimary}

@@ -55,14 +55,14 @@ export default function FinalCTA() {
         </p>
 
         <Link
-          href="/accedi?action=signup"
+          href="#richiedi-accesso"
           className="inline-block px-8 py-4 text-lg font-semibold rounded-lg text-white transition-all hover:opacity-90 mb-12"
           style={{ backgroundColor: COLORS.primary }}
         >
           {LANDING_COPY.cta.button}
         </Link>
 
-        <div className="max-w-md mx-auto pt-8 border-t">
+        <div id="richiedi-accesso" className="max-w-md mx-auto pt-8 border-t scroll-mt-24">
           <p className="text-gray-600 mb-4">
             <label htmlFor="newsletter-email">{LANDING_COPY.cta.newsletter}</label>
           </p>

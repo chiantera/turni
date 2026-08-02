@@ -23,8 +23,29 @@ async function accedi(formData: FormData) {
   redirect(destinazioneDopoAccesso({ da, dal, al }))
 }
 
+/**
+ * L'autoregistrazione è chiusa finché non esistono le aziende.
+ *
+ * Il database non ha ancora un concetto di organizzazione: `workers` ha una
+ * policy di lettura `using (true)`, quindi chiunque si registri vede nome e
+ * cognome dei dipendenti di chiunque altro. Non è una svista di RLS — senza
+ * un `azienda_id` nessuna policy può distinguere un collega da un estraneo.
+ *
+ * Finché è così, l'unica difesa è controllare chi entra: gli accessi si
+ * creano dal pannello Supabase. Riaprire è una variabile d'ambiente, ma va
+ * fatto dopo la multi-tenancy, non prima.
+ */
+const REGISTRAZIONI_APERTE = process.env.REGISTRAZIONI_APERTE === "1"
+
 async function registrati(formData: FormData) {
   "use server"
+  if (!REGISTRAZIONI_APERTE) {
+    redirect(
+      `/accedi?errore=${encodeURIComponent(
+        "Le registrazioni sono chiuse durante la beta. Chiedi un accesso a chi amministra lo spazio.",
+      )}`,
+    )
+  }
   const sb = await creaClientServer()
   const email = String(formData.get("email") ?? "")
   const password = String(formData.get("password") ?? "")
@@ -50,7 +71,7 @@ export default async function PaginaAccedi({
   }>
 }) {
   const sp = await searchParams
-  const modoRegistrazione = sp.registra === "1"
+  const modoRegistrazione = sp.registra === "1" && REGISTRAZIONI_APERTE
 
   return (
     <main className="flex-1 grid place-items-center p-6">

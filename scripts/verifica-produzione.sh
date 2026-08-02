@@ -118,6 +118,8 @@ assente  "$home" "info@turni.app"   "casella senza record MX: qualunque mailto r
 assente  "$home" "zero scoperte"    "il solver conta i turni scoperti, non li azzera"
 assente  "$home" "fino a X"         "segnaposto del prezzo finito in produzione"
 assente  "$home" "Nessuna terza parte" "Supabase, Vercel e Mistral trattano i dati"
+assente  "$home" "action=signup"      "parametro mai letto da /accedi: era un pulsante verso il nulla"
+contiene "$home" "richiedi-accesso"   "le CTA portano al form, non a una registrazione chiusa"
 
 echo
 if [ "$fallimenti" -eq 0 ]; then
