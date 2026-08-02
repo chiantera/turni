@@ -8,10 +8,35 @@ This file contains instructions for AI agents, automation tools, and external AI
 
 - **App:** Next.js (App Router), React, TypeScript, Tailwind CSS
 - **Database:** Supabase PostgreSQL with RLS
-- **AI:** Claude API (Anthropic) via MCP proxy
+- **AI:** provider intercambiabile via `AI_PROVIDER` (oggi Mistral) — `lib/ai/provider.ts`
 - **Core Logic:** Deterministic solver (not ML-based scheduling)
 
 **Key principle:** AI proposes constraints (from natural language) → user confirms → solver decides (deterministically).
+
+---
+
+## Environments and links
+
+| What | Where |
+|---|---|
+| **Production** | https://turni-psi.vercel.app |
+| Privacy / data handling | https://turni-psi.vercel.app/privacy |
+| Sign in | https://turni-psi.vercel.app/accedi |
+| Dashboard (needs a session) | https://turni-psi.vercel.app/home |
+| Vercel project | https://vercel.com/chiantera-5967s-projects/turni |
+| Supabase project `uxwmletpnmsbvdyxktln` | https://supabase.com/dashboard/project/uxwmletpnmsbvdyxktln |
+| Repository | https://github.com/chiantera/turni |
+| CI and smoke test | https://github.com/chiantera/turni/actions |
+
+Equivalent aliases of the same production deployment:
+`turni-chiantera-5967s-projects.vercel.app`,
+`turni-git-main-chiantera-5967s-projects.vercel.app`.
+
+**Deployment is automatic.** Every push to `main` builds and publishes; there
+is no staging environment. What you push is what beta testers see. Treat a
+push to `main` as a release, and verify the running system afterwards —
+`scripts/verifica-produzione.sh` runs on its own after each successful deploy,
+but run it by hand too when you touch the landing page or the middleware.
 
 ---
 
@@ -28,7 +53,10 @@ This file contains instructions for AI agents, automation tools, and external AI
 
 3. **Check recent commits** (`git log --oneline -10`) to see what changed
 4. **Run tests** (`npm test`) to baseline the project state
-5. **Never push directly to main without confirmation** — ask first if unsure
+5. **Read "Verified Traps" below.** Every entry is a defect that already
+   shipped here. Compiling clean is not the same as working — see
+   `./scripts/verifica-produzione.sh`.
+6. **Never push directly to main without confirmation** — ask first if unsure
 
 ---
 
@@ -52,7 +80,8 @@ This file contains instructions for AI agents, automation tools, and external AI
 - **Server Components by default** — only `"use client"` when needed (interactivity, hooks)
 - **Avoid fetch in components** — move to Server Components or API routes
 - **Route groups:** `(landing)`, `(authenticated)`, etc. for logical separation
-- **Middleware:** Auth check in layout files, not separate middleware (simpler)
+- **Middleware:** auth and public routes live in `proxy.ts`, not in layouts.
+  It intercepts API routes too — a public endpoint must be allowlisted there.
 
 ### Styling
 - **Tailwind CSS only** — no inline styles, no CSS modules (unless Tailwind can't do it)
@@ -101,14 +130,15 @@ This file contains instructions for AI agents, automation tools, and external AI
 - **Use Vitest** (`npm test`) — framework is Vitest
 - **Integration tests** — for complex logic (solver, AI extraction)
 - **Unit tests** — for utility functions (formatDate, validateCoverage)
-- **No E2E tests yet** — manual browser testing for now
+- **No E2E tests yet.** `scripts/verifica-produzione.sh` covers what a browser
+  test would catch from outside: status codes, assets, content invariants.
 - Test file naming: `*.test.ts` or `*.itest.ts` (integration)
 
 ### Updating Documentation
-- **README.md** — High-level overview, getting started, architecture
-- **HANDOFF.md** — When a feature is complete, add testing & TODO notes
-- **In-code comments** — Only for "why", not "what" (code should be self-documenting)
-- **Docs folder** — Technical deep-dives live here (e.g., `docs/landing-page.md`)
+Use the `documentazione` skill (`.claude/skills/documentazione/`): it holds the
+criteria for what is worth recording and where it belongs. In short — `AGENTS.md`
+for durable rules, `HANDOFF.md` for the state of the work, `README.md` for the
+structure map, and nothing at all for what git or the code already says.
 
 ---
 
@@ -121,8 +151,11 @@ This file contains instructions for AI agents, automation tools, and external AI
 - **Transactional:** Many operations use PostgreSQL RPCs for atomicity (planning runs, reductions)
 
 ### AI Integration
-- **Claude API only** — no other providers (unless explicitly changed)
-- **MCP proxy:** Requests go through `proxy.ts` (do not bypass)
+- **Provider is a single env var** — `AI_PROVIDER`, resolved in `lib/ai/provider.ts`.
+  Today it is `mistral`, chosen because the prompt carries workers' full names
+  and Mistral is in the EU. Changing it must not require touching any other file.
+- **`proxy.ts` is the auth middleware, not an AI proxy.** It has nothing to do
+  with this section; it decides which routes are public.
 - **API keys:** Never commit `.env` files, use environment variables
 - **Streaming:** Supported via Next.js Route Handlers (use if needed)
 - **Cost:** Be mindful of token usage in production
@@ -157,6 +190,108 @@ This file contains instructions for AI agents, automation tools, and external AI
 - **Components:** PascalCase (e.g., `HeroSection.tsx`, `SelettoreIntervallo.tsx`)
 - **Utilities:** camelCase (e.g., `formatDate.ts`, `validateCoverture.ts`)
 - **Constants files:** `constants.ts`, `copy.ts`, `config.ts`
+
+---
+
+## Verified Traps
+
+Every item below already cost real time on this project. They are not
+hypotheses — each one is a defect that shipped, or nearly did.
+
+### Compiling is not working
+
+On 1-2 August 2026 the following were all true at once, with typecheck clean,
+lint passing and every test green: the landing page was unreachable (the
+middleware redirected `/` to the login), `.mp4` requests returned 307, both
+video assets were 0 bytes, the production database was two migrations behind
+the deployed code, and the page carried fabricated customer testimonials.
+
+**None of it was visible in the source.** Run the smoke test against the
+deployed system:
+
+```bash
+./scripts/verifica-produzione.sh                        # produzione
+./scripts/verifica-produzione.sh http://localhost:3000  # locale
+```
+
+Every assertion in that script is tied to a real incident, and says which.
+Keep it that way: assertions added "just in case" turn into false failures
+that get ignored, which is how a check stops being a check.
+
+### The migration ledger is not the schema
+
+`list_migrations` reports only what was applied through the CLI or the MCP. It
+says nothing about the schema that actually exists — read `information_schema`
+for that. The two diverge in both directions: as of 2 August 2026 the remote
+holds three migrations whose SQL is nowhere in this repo
+(`copertura_festiva_esplicita`, `dati_dimostrativi`, `primo_utente_admin`), so
+**the repository cannot currently rebuild production from scratch.**
+
+### RLS policy syntax: `FOR` before `TO`
+
+```sql
+create policy "x" on t for select to authenticated using (...);  -- valido
+create policy "x" on t to authenticated for select using (...);  -- rifiutato
+```
+
+Written the wrong way round the migration is not applicable at all. This is
+why `planning_runs` sat unapplied for days while `/riepilogo`,
+`/pianificazione`, plan generation and `/home` were broken in production.
+
+### The middleware guards API routes too
+
+`proxy.ts` intercepts `/api/*` exactly as it intercepts pages. A public
+endpoint must be added to the allowlist explicitly — "public route" is easy to
+read as "page you visit" and forget that it also means "endpoint you call".
+Static assets need their **file extension** in the matcher exclusion list;
+`mp4` was missing, so no video could ever be served.
+
+### Do not duplicate RLS in TypeScript
+
+Queries in `lib/dati/` deliberately carry no per-user filter: the policies do
+it, so the same code returns totals to a `pianificatore` and only their own
+rows to a `lavoratore`. A copy of that rule in TypeScript is the copy that
+eventually drifts from the one in the database.
+
+### Read the right exit code
+
+`npm run build 2>&1 | tail -20` returns **tail's** status, so a failed build
+reports 0. Write to a file and read `$?`:
+
+```bash
+npm run build > /tmp/build.log 2>&1; echo "exit=$?"; tail -20 /tmp/build.log
+```
+
+Conversely `grep -c` exits 1 when it finds nothing, which is often the desired
+result. Know whose exit code you are reading.
+
+### Local environment
+
+- `.next/dev/types` goes stale after a route is deleted and makes
+  `npm run typecheck` fail on a file that no longer exists.
+  Fix: `rm -rf .next/dev/types`
+- The executable bit does not survive on `/mnt/c` under WSL. `chmod +x` will
+  not reach the git index — use `git update-index --chmod=+x <file>`, or CI
+  fails with "permission denied" on a script that runs fine locally.
+- `npm run lint` takes over four minutes here. That is precisely why CI exists:
+  a check that slow stops being run, and the lint was red on `main` for days.
+
+### Vercel environment variables
+
+`vercel env add` ignores stdin when it detects an agent (non-interactive mode)
+and silently stores an empty string. Use `--value`. New Production variables
+also default to **sensitive**, meaning write-only: `vercel env pull` returns an
+empty string and you cannot verify what you set. Pass `--no-sensitive` for
+configuration that is not a secret, such as `AI_PROVIDER`.
+
+### Public copy must survive contact with the code
+
+The landing page claimed "Nessuna terza parte" while `lib/ai/estrazione.ts`
+sent every worker's name to an AI provider; it promised "zero scoperte" while
+the solver counts uncovered shifts; it linked a mailbox on a domain with no MX
+record. Before shipping copy, check each claim against what the code does.
+Never publish testimonials, reviews or endorsements that were not given by a
+real person.
 
 ---
 
@@ -204,7 +339,19 @@ supabase db reset             # Reset local DB to latest migration
 
 # Debugging
 AI_DEBUG=1 npm run test:ai    # See raw AI requests/responses
+
+# Verifica del sistema in esecuzione (non del sorgente)
+./scripts/verifica-produzione.sh                        # smoke test in produzione
+./scripts/verifica-produzione.sh http://localhost:3000  # contro il locale
+./scripts/demo-landing/genera.sh                        # rigenera il video demo
 ```
+
+**CI runs on every push** (`.github/workflows/ci.yml`): typecheck, lint, test,
+build — each step runs even if the previous one fails. The smoke test runs
+after every successful deploy and once a day
+(`.github/workflows/verifica-produzione.yml`); the daily run also catches a
+free-tier Supabase project going to sleep, which stops the app without anyone
+touching the code.
 
 ---
 
@@ -242,6 +389,6 @@ When you complete a feature or fix:
 
 ---
 
-**Last updated:** 2026-08-01  
+**Last updated:** 2026-08-02  
 **Maintained by:** Claude Code + AI Agents  
 **Language:** Italian (UI/docs) + English (code)
