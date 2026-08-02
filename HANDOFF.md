@@ -16,10 +16,10 @@ A conversion-focused landing page with 8 sections (all Italian, HR-targeted):
 2. **Video Section** — Autoplay muted demo video (15-20s), fallback screenshot, smooth scroll-to-from hero CTA
 3. **Problem + Solution** — 2-column grid (left: chaotic manual planning, right: Turni solves it)
 4. **Features (3 Cards)** — AI in italiano, Solver deterministico, Intervalli flessibili
-5. **Testimonials** — 2 real-sounding quotes from HR managers + roles
-6. **Final CTA** — "Pronto a risolvere i turni?" + newsletter signup form (TODO: backend)
+5. **BetaNotice** — Stato onesto del prodotto: cosa è pronto, cosa manca
+6. **Final CTA** — "Pronto a risolvere i turni?" + iscrizione newsletter (collegata a Supabase)
 7. **FAQ** — 5 accordion items (what is solver, how AI works, manual edits, pricing, privacy)
-8. **Footer** — Dark background, links (docs, GitHub, contact), social (LinkedIn, email)
+8. **Footer** — Dark background. Solo link verificati: README e issue su GitHub, pagina Trattamento dei dati
 
 **Tech:**
 - Next.js App Router group route `(landing)/`
@@ -53,8 +53,8 @@ Post-login hub with quick access to planning features:
 
 Lo smistamento sta tutto in **`proxy.ts`** (il middleware), non in una pagina:
 
-- `/`, `/accedi`, `/auth` sono pubbliche; ogni altro percorso senza sessione
-  finisce su `/accedi?da=<percorso>`
+- `/`, `/privacy`, `/api/newsletter`, `/accedi` e `/auth` sono pubbliche; ogni
+  altro percorso senza sessione finisce su `/accedi?da=<percorso>`
 - con una sessione attiva, `/` e `/accedi` rimandano a `/home`
 
 I route group **non** creano segmenti di URL: `(landing)/page.tsx` risponde su
@@ -82,7 +82,7 @@ app/
       VideoSection.tsx
       ProblemSolution.tsx
       FeaturesCards.tsx
-      Testimonials.tsx
+      BetaNotice.tsx
       FinalCTA.tsx
       FAQ.tsx
       Footer.tsx
@@ -127,7 +127,7 @@ npm run dev
 - Click "Guarda la demo" → should smooth-scroll to video section
 - Scroll through all sections, verify text/images load
 - Test FAQ accordion (click to expand/collapse)
-- Test newsletter email input (submit shows success feedback)
+- Iscrizione newsletter: richiede la migrazione applicata, altrimenti risponde 500
 - Test footer links
 
 ### 3. Test Dashboard (Authenticated)
@@ -208,11 +208,22 @@ Use browser DevTools to resize or emulate:
     lasciano traccia (`coverage_rules` non ha colonne temporali). Per una
     cronologia vera servirebbe una tabella di audit.
 
-### 💬 Real Testimonials
-- **Current:** 2 placeholder quotes (Marco R., Lucia B.)
-- **To Do:** Gather real testimonials from early users
-- **File:** `lib/landing/copy.ts` → `testimonials` array
-- **Format:** `{stars: 5, quote: "...", author: "Name", role: "Title, Location"}`
+### 💬 Testimonianze
+- **Rimosse.** Erano due citazioni inventate («Marco R., HR Manager, PMI Veneto»
+  e «Lucia B., Coordinatrice Turni, Lomellina») con cinque stelle, pubblicate
+  come se fossero pareri di clienti reali. Inventare consenso sociale è la cosa
+  più facile da fare e la più difficile da recuperare quando emerge.
+- **Al loro posto** `BetaNotice.tsx`: cosa è pronto e cosa manca, in due elenchi.
+- **Quando ce ne saranno di vere:** vanno raccolte con il consenso scritto di chi
+  le firma, con nome e organizzazione reali. Una testimonianza anonima o
+  parafrasata vale meno di nessuna testimonianza.
+
+### 📮 Casella di posta assente
+- `turni.app` **non ha record MX**: nessun indirizzo su quel dominio riceve
+  posta. `info@turni.app` compariva in tre punti della landing, compreso il
+  canale di cancellazione dalla newsletter.
+- **Ora** i contatti passano dalle issue di GitHub. Prima di uscire dalla beta
+  serve una casella vera: un canale di opt-out che rimbalza non è un canale.
 
 ---
 
@@ -250,7 +261,7 @@ Before considering this "done":
 - [ ] Video placeholder plays (or shows fallback)
 - [ ] Problem+solution is readable (2-col on desktop, 1-col on mobile)
 - [ ] Features grid is responsive
-- [ ] Testimonials display
+- [ ] La sezione beta elenca cosa è pronto e cosa manca
 - [ ] FAQ accordion expands/collapses
 - [ ] Newsletter form accepts email (shows success)
 - [ ] Footer links work

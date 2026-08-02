@@ -5,7 +5,7 @@ import HeroSection from "./componenti/HeroSection"
 import VideoSection from "./componenti/VideoSection"
 import ProblemSolution from "./componenti/ProblemSolution"
 import FeaturesCards from "./componenti/FeaturesCards"
-import Testimonials from "./componenti/Testimonials"
+import BetaNotice from "./componenti/BetaNotice"
 import FinalCTA from "./componenti/FinalCTA"
 import FAQ from "./componenti/FAQ"
 import Footer from "./componenti/Footer"
@@ -25,7 +25,7 @@ export default function LandingPage() {
       </div>
       <ProblemSolution />
       <FeaturesCards />
-      <Testimonials />
+      <BetaNotice />
       <FinalCTA />
       <FAQ />
       <Footer />

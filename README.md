@@ -72,7 +72,7 @@ garantire copertura, monte ore o riposi, e non sarebbe riproducibile.
 │  │     ├─ VideoSection.tsx              Demo video autoplay+muted+poster
 │  │     ├─ ProblemSolution.tsx           2-col problem+solution
 │  │     ├─ FeaturesCards.tsx             3-card feature grid
-│  │     ├─ Testimonials.tsx              Testimonial cards
+│  │     ├─ BetaNotice.tsx                Stato reale del prodotto in beta
 │  │     ├─ FinalCTA.tsx                  CTA + newsletter
 │  │     ├─ FAQ.tsx                       Accordion FAQ
 │  │     └─ Footer.tsx                    Dark footer

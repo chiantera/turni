@@ -33,10 +33,16 @@ export default async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const percorso = request.nextUrl.pathname
-  // La landing vive sulla root ed è il biglietto da visita del prodotto:
-  // deve rispondere a chi un account non ce l'ha ancora.
+  // La landing vive sulla root ed è il biglietto da visita del prodotto: deve
+  // rispondere a chi un account non ce l'ha ancora. Lo stesso vale per la
+  // pagina sul trattamento dei dati, che serve proprio a chi sta decidendo se
+  // affidarci qualcosa, e per l'iscrizione alla newsletter.
   const pubblica =
-    percorso === "/" || percorso.startsWith("/accedi") || percorso.startsWith("/auth")
+    percorso === "/" ||
+    percorso === "/privacy" ||
+    percorso === "/api/newsletter" ||
+    percorso.startsWith("/accedi") ||
+    percorso.startsWith("/auth")
 
   if (!user && !pubblica) {
     const url = request.nextUrl.clone()

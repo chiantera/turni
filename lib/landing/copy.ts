@@ -3,7 +3,7 @@ export const LANDING_COPY = {
     headline: "Turni complessi?",
     headlineSecond: "Risolvi in minuti, non ore.",
     subheader:
-      "Pianificazione automatica con AI + solver deterministico. Copertura garantita, zero scoperte, export in Excel e iCal.",
+      "Pianificazione automatica con assistente in italiano e solver deterministico. Copertura, monte ore e riposi verificati prima che il piano ti venga mostrato. Export in Excel e iCalendar.",
     ctaPrimary: "Inizia gratis",
     ctaSecondary: "Guarda la demo",
   },
@@ -24,8 +24,8 @@ export const LANDING_COPY = {
   solution: {
     headline: "Turni risolve tutto",
     bullets: [
-      "AI estrae i vincoli dal linguaggio naturale italiano",
-      "Solver deterministico garantisce copertura legale",
+      "L'assistente estrae i vincoli dall'italiano scritto come si parla",
+      "Il solver verifica copertura, monte ore e riposi minimi",
       "Modifiche interattive con validazione istantanea",
       "Export automatico in Excel e iCalendar",
     ],
@@ -35,15 +35,15 @@ export const LANDING_COPY = {
     items: [
       {
         icon: "🤖",
-        title: "AI in italiano",
+        title: "Assistente in italiano",
         description:
-          "Estrai vincoli in 10 secondi. AI capisce richieste naturali senza jargon tecnico.",
+          "Scrivi «Marco è libero la domenica pomeriggio». L'assistente propone il vincolo, tu confermi: nessun modulo, nessun gergo tecnico.",
       },
       {
         icon: "⚙️",
         title: "Solver deterministico",
         description:
-          "Garantisce copertura 100%, zero scoperte. Algoritmo verificato, non euristico.",
+          "Stessi dati, stesso piano: nessuna sorpresa fra due esecuzioni. Se l'organico non basta te lo dice prima, invece di consegnarti una griglia con dei buchi.",
       },
       {
         icon: "📅",
@@ -52,22 +52,35 @@ export const LANDING_COPY = {
       },
     ],
   },
-  testimonials: [
-    {
-      stars: 5,
-      quote:
-        "Prima passavo 8 ore a settimana su Excel. Ora il piano è pronto in 20 minuti. E senza errori.",
-      author: "Marco R.",
-      role: "HR Manager, PMI Veneto",
+  // Niente testimonianze finché non ce ne saranno di vere: inventare
+  // apprezzamenti di clienti inesistenti è la cosa più facile da fare e la più
+  // difficile da recuperare. Al loro posto lo stato onesto del prodotto.
+  beta: {
+    etichetta: "Beta pubblica",
+    headline: "Turni è in beta, e si vede",
+    testo:
+      "Nessuna testimonianza in questa pagina: non abbiamo ancora clienti da citare. " +
+      "Quello che c'è funziona ed è testato, ma stiamo cercando chi lo usi sul serio " +
+      "e ci dica cosa manca.",
+    pronti: {
+      titolo: "Cosa è pronto",
+      voci: [
+        "Solver deterministico su intervalli da 1 a 366 giorni",
+        "Estrazione dei vincoli dall'italiano, con conferma prima di applicarli",
+        "Griglia interattiva con validazione a ogni modifica",
+        "Export in Excel e iCalendar",
+      ],
     },
-    {
-      stars: 5,
-      quote:
-        "L'AI capisce subito cosa significa 'Marco domenica pomeriggio libera'. Non devo più scrivere per ore.",
-      author: "Lucia B.",
-      role: "Coordinatrice Turni, Lomellina",
+    mancano: {
+      titolo: "Cosa manca ancora",
+      voci: [
+        "Nessun piano a pagamento: durante la beta si usa gratis",
+        "Il video qui sopra è un'illustrazione, non una registrazione del prodotto",
+        "Notifiche e app mobile non esistono",
+        "Le richieste in linguaggio naturale passano da un fornitore AI esterno",
+      ],
     },
-  ],
+  },
   cta: {
     headline: "Pronto a risolvere i turni?",
     subheader: "Accesso gratuito, niente carte. Setup in 10 minuti.",
@@ -79,13 +92,15 @@ export const LANDING_COPY = {
     newsletterOk: "Fatto. Ti scriviamo per confermare l'iscrizione.",
     newsletterErrore: "Non siamo riusciti a registrare l'iscrizione. Riprova più tardi.",
     newsletterConsenso:
-      "Solo contenuti sulla pianificazione dei turni, mai comunicazioni " +
-      "commerciali di terzi. Puoi cancellarti quando vuoi scrivendo a info@turni.app.",
+      "Registriamo il tuo indirizzo e non ti scriviamo nulla finché non avrai " +
+      "confermato l'iscrizione: il messaggio di conferma conterrà il link per " +
+      "cancellarti. Solo contenuti sulla pianificazione dei turni, mai comunicazioni " +
+      "commerciali di terzi.",
   },
   faq: [
     {
       q: "Cos'è un 'solver deterministico'?",
-      a: "Un algoritmo che costruisce la griglia garantendo copertura, monte ore, e riposi legali. A differenza di euristiche, il deterministic solver verifica che il risultato sia valido prima di presentarlo.",
+      a: "Un algoritmo che a parità di dati produce sempre lo stesso piano, e che verifica copertura, monte ore e riposi minimi prima di mostrartelo. Se i vincoli non sono soddisfacibili — per esempio perché mancano persone — te lo dice e spiega dove, invece di consegnare una griglia con dei buchi.",
     },
     {
       q: "Come funziona l'AI?",
@@ -97,23 +112,25 @@ export const LANDING_COPY = {
     },
     {
       q: "Quanto costa?",
-      a: "Accesso gratuito per provare. Piano futuro: freemium per PMI fino a X lavoratori, pro tier per aziende più grandi.",
+      a: "Durante la beta niente: si usa gratis e senza carta di credito. I prezzi non sono ancora decisi, e non lo saranno finché non avremo capito a chi serve davvero. Chi partecipa alla beta lo saprà in anticipo.",
     },
     {
-      q: "I miei dati sono privati?",
-      a: "Sì, hosted on Supabase PostgreSQL in Italia. Nessuna terza parte. Pieno controllo dei vostri dati.",
+      q: "Dove finiscono i miei dati?",
+      a: "Anagrafiche, turni e piani stanno su PostgreSQL gestito da Supabase in un data center dell'Unione Europea; l'applicazione gira su Vercel. Quando si usa l'assistente in italiano, il testo della richiesta e l'elenco dei nomi dei lavoratori vengono inviati a un fornitore di modelli AI esterno all'UE, perché possa riconoscere di chi si parla: è l'unico momento in cui quei dati escono dall'Europa, e riguarda solo quella funzione. Il dettaglio completo è nella pagina Trattamento dei dati.",
     },
   ],
   footer: {
+    // Ogni indirizzo qui sotto è stato verificato. Il dominio turni.app non ha
+    // record MX: qualunque mailto: verso info@turni.app rimbalzerebbe, quindi
+    // durante la beta il canale di contatto è GitHub.
     links: [
-      { label: "Documentazione", href: "/docs" },
+      { label: "Documentazione", href: "https://github.com/chiantera/turni#readme" },
       { label: "GitHub", href: "https://github.com/chiantera/turni" },
-      { label: "Contatti", href: "mailto:info@turni.app" },
+      { label: "Trattamento dei dati", href: "/privacy" },
     ],
     social: [
-      { label: "LinkedIn", href: "https://linkedin.com" },
-      { label: "Email", href: "mailto:info@turni.app" },
+      { label: "Segnala un problema", href: "https://github.com/chiantera/turni/issues" },
     ],
-    copyright: "© 2026 Turni. Tutti i diritti riservati.",
+    copyright: "© 2026 Turni. Beta pubblica.",
   },
 }
