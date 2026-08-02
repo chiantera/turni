@@ -100,13 +100,15 @@ garantire copertura, monte ore o riposi, e non sarebbe riproducibile.
 │     ├─ ai/                              Estrazione vincoli da linguaggio naturale
 │     ├─ piano/                           Generazione, salvataggio, riduzione
 │     ├─ vincoli/                         Validazione e applicazione
+│     ├─ newsletter/                      Iscrizioni landing (unica rotta pubblica)
 │     └─ export/                          Excel (xlsx) + iCalendar (ics)
 │
 ├─ 📚 lib/ (Librerie core)
 │  ├─ 🤖 ai/                              Claude API, DSL, estrazione, suggerimenti
 │  ├─ 📊 dati/                            Formattazione, intervalli, piano
 │  │  ├─ statistiche.ts                   KPI dashboard (piani, ore, lavoratori)
-│  │  └─ attivita.ts                      Cronologia dai timestamp di riga
+│  │  ├─ attivita.ts                      Cronologia dai timestamp di riga
+│  │  └─ newsletter.ts                    Normalizzazione indirizzi email
 │  ├─ 🔧 solver/                          Ciclico, greedy, ricerca, fattibilità
 │  ├─ 🎨 landing/                         Copy e design constants landing page
 │  │  ├─ copy.ts                          Testi italiani (hero, features, FAQ, etc)

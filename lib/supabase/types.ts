@@ -539,6 +539,9 @@ export type Database = {
         }
         Returns: number
       }
+      // Aggiunta a mano in attesa che 20260802000001_newsletter.sql venga
+      // applicata: alla prossima rigenerazione ricomparirà identica.
+      iscrivi_newsletter: { Args: { p_email: string }; Returns: undefined }
       e_pianificatore: { Args: never; Returns: boolean }
       ruolo_corrente: {
         Args: never

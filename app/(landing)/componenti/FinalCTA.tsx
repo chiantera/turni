@@ -5,18 +5,42 @@ import { useState } from "react"
 import { LANDING_COPY } from "@/lib/landing/copy"
 import { COLORS } from "@/lib/landing/constants"
 
+type StatoIscrizione = "attesa" | "invio" | "fatto" | "errore"
+
 export default function FinalCTA() {
   const [email, setEmail] = useState("")
-  const [submitted, setSubmitted] = useState(false)
+  // Campo esca per i bot: resta vuoto per chiunque usi davvero la pagina.
+  const [azienda, setAzienda] = useState("")
+  const [stato, setStato] = useState<StatoIscrizione>("attesa")
+  const [messaggio, setMessaggio] = useState("")
 
-  const handleNewsletterSubmit = (e: React.FormEvent) => {
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Connect to email service (Resend, etc.)
-    setSubmitted(true)
-    setTimeout(() => {
+    if (stato === "invio") return
+
+    setStato("invio")
+    setMessaggio("")
+    try {
+      const risposta = await fetch("/api/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, azienda }),
+      })
+      const dati = await risposta.json().catch(() => ({}))
+      if (!risposta.ok) {
+        setStato("errore")
+        setMessaggio(dati.errore || LANDING_COPY.cta.newsletterErrore)
+        return
+      }
+      setStato("fatto")
+      setMessaggio(LANDING_COPY.cta.newsletterOk)
       setEmail("")
-      setSubmitted(false)
-    }, 3000)
+    } catch {
+      // Rete assente o richiesta interrotta: l'utente non deve restare a
+      // fissare un pulsante che gira all'infinito.
+      setStato("errore")
+      setMessaggio(LANDING_COPY.cta.newsletterErrore)
+    }
   }
 
   return (
@@ -39,23 +63,60 @@ export default function FinalCTA() {
         </Link>
 
         <div className="max-w-md mx-auto pt-8 border-t">
-          <p className="text-gray-600 mb-4">{LANDING_COPY.cta.newsletter}</p>
+          <p className="text-gray-600 mb-4">
+            <label htmlFor="newsletter-email">{LANDING_COPY.cta.newsletter}</label>
+          </p>
           <form onSubmit={handleNewsletterSubmit} className="flex gap-2">
             <input
+              id="newsletter-email"
+              name="email"
               type="email"
-              placeholder="your@email.com"
+              autoComplete="email"
+              placeholder={LANDING_COPY.cta.newsletterPlaceholder}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+              disabled={stato === "invio"}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 disabled:opacity-60"
+            />
+            {/* Esca: nascosta agli occhi e alla navigazione assistita, ma
+                compilata dai bot che riempiono ogni campo che trovano. */}
+            <input
+              type="text"
+              name="azienda"
+              value={azienda}
+              onChange={(e) => setAzienda(e.target.value)}
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              className="absolute h-0 w-0 opacity-0"
             />
             <button
               type="submit"
-              className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+              disabled={stato === "invio"}
+              className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-60"
             >
-              {submitted ? "✓" : "Iscriviti"}
+              {stato === "invio"
+                ? LANDING_COPY.cta.newsletterInvio
+                : stato === "fatto"
+                  ? "✓"
+                  : LANDING_COPY.cta.newsletterBottone}
             </button>
           </form>
+
+          <p
+            role="status"
+            aria-live="polite"
+            className={`mt-3 text-sm min-h-[1.25rem] ${
+              stato === "errore" ? "text-red-600" : "text-green-700"
+            }`}
+          >
+            {messaggio}
+          </p>
+
+          <p className="mt-2 text-xs text-gray-500 leading-relaxed">
+            {LANDING_COPY.cta.newsletterConsenso}
+          </p>
         </div>
       </div>
     </section>

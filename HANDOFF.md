@@ -167,10 +167,25 @@ Use browser DevTools to resize or emulate:
   `docs/video-demo-scaletta.md`.
 
 ### 📧 Newsletter Backend
-- **Current:** UI-only (form accepts email, shows success)
-- **To Do:** Wire up to email service (Resend, SendGrid, Mailchimp, etc.)
-- **File:** `app/(landing)/componenti/FinalCTA.tsx` line ~20 (TODO comment)
-- **Action:** POST to `/api/subscribe` or similar, save to database
+- **Fatto:** il form scrive davvero su Supabase.
+  - `supabase/migrations/20260802000001_newsletter.sql` — tabella
+    `newsletter_subscriptions` + funzione `iscrivi_newsletter()`
+  - `app/api/newsletter/route.ts` — unico endpoint aperto senza sessione
+  - `lib/dati/newsletter.ts` — normalizzazione indirizzi (con test)
+- **⚠️ Richiede un passo manuale:** la migrazione **non è stata applicata**.
+  Finché non gira sul progetto Supabase, il form risponde 500. Dopo averla
+  applicata, rigenerare `lib/supabase/types.ts` (la firma di
+  `iscrivi_newsletter` è stata aggiunta a mano nell'attesa).
+- **Perché una funzione invece di una policy:** la chiave pubblicabile sta nel
+  bundle del browser. Una policy di insert per `anon` renderebbe la tabella
+  scrivibile da chiunque. La tabella non ha policy di scrittura: si entra solo
+  dalla funzione `security definer`, che valida e normalizza.
+- **Antiabuso:** c'è un campo esca per i bot, **non** un rate limit. Un
+  endpoint pubblico di scrittura senza limiti di frequenza resta esposto:
+  serve uno store condiviso (Upstash, o una tabella con finestra temporale).
+- **Doppio opt-in:** la colonna `confermata` nasce a `false` ed è oggi sempre
+  `false`. **Nessuna email va inviata** finché non esiste il giro di conferma.
+- **Prossimo passo:** collegare Resend leggendo dalla tabella, non sostituendola.
 
 ### 📊 Dashboard Database Queries
 - **Stats:** ✅ Fatto — `lib/dati/statistiche.ts` (`statisticheDashboard`)

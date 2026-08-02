@@ -73,6 +73,14 @@ export const LANDING_COPY = {
     subheader: "Accesso gratuito, niente carte. Setup in 10 minuti.",
     button: "Inizia gratis",
     newsletter: "Ricevi tips sulla pianificazione",
+    newsletterPlaceholder: "nome@azienda.it",
+    newsletterBottone: "Iscriviti",
+    newsletterInvio: "Invio…",
+    newsletterOk: "Fatto. Ti scriviamo per confermare l'iscrizione.",
+    newsletterErrore: "Non siamo riusciti a registrare l'iscrizione. Riprova più tardi.",
+    newsletterConsenso:
+      "Solo contenuti sulla pianificazione dei turni, mai comunicazioni " +
+      "commerciali di terzi. Puoi cancellarti quando vuoi scrivendo a info@turni.app.",
   },
   faq: [
     {
