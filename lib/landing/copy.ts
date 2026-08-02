@@ -9,8 +9,10 @@ export const LANDING_COPY = {
   },
   video: {
     headline: "Genera un piano in 3 step",
+    // "Niente fogli Excel" negava una funzionalità che esiste e funziona bene.
+    // L'opposizione vera non è allo strumento ma al momento in cui lo si usa.
     subheader:
-      "Dall'idea al piano in minuti. Niente fogli Excel, niente errori.",
+      "Dall'idea al piano in minuti. In Excel ci finisce alla fine, non all'inizio.",
   },
   problem: {
     headline: "Pianificazione manuale = caos",
@@ -27,7 +29,7 @@ export const LANDING_COPY = {
       "L'assistente estrae i vincoli dall'italiano scritto come si parla",
       "Il solver verifica copertura, monte ore e riposi minimi",
       "Modifiche interattive con validazione istantanea",
-      "Export automatico in Excel e iCalendar",
+      "Export in Excel con il riepilogo ore per lavoratore — svolte, contratto, scarto — e in iCalendar",
     ],
   },
   features: {
@@ -41,9 +43,13 @@ export const LANDING_COPY = {
       },
       {
         icon: "⚙️",
-        title: "Solver deterministico",
+        // "Deterministico" è una proprietà tecnica, non un beneficio: a chi
+        // pianifica turni interessa la conseguenza, cioè poter rispondere a
+        // chi contesta. Il termine resta nel corpo, dove fa da garanzia per
+        // chi sa cosa significa senza spaventare chi non lo sa.
+        title: "Un piano che puoi difendere",
         description:
-          "Stessi dati, stesso piano: nessuna sorpresa fra due esecuzioni. Se l'organico non basta te lo dice prima, invece di consegnarti una griglia con dei buchi.",
+          "Se qualcuno contesta il suo turno, la risposta c'è: il solver è deterministico, stessi dati stesso piano, sempre. Verifica riposi minimi e monte ore prima di mostrartelo, e se l'organico non basta te lo dice — invece di consegnarti una griglia con dei buchi che scopri il 14 del mese.",
       },
       {
         icon: "📅",
@@ -105,6 +111,10 @@ export const LANDING_COPY = {
     {
       q: "Come funziona l'AI?",
       a: "Legge le richieste in italiano naturale (es. 'Marco domenica pomeriggio libera') e le converte in vincoli strutturati che l'utente può confermare. Non genera direttamente i turni — solo valida i vincoli.",
+    },
+    {
+      q: "Perché il piano non lo scrive direttamente l'AI?",
+      a: "Perché un modello linguistico non sa dimostrare quello che produce. Genererebbe una griglia plausibile, e le violazioni di riposo le scopriresti dopo. Qui l'AI fa una cosa sola: riconoscere che «Marco è libero la domenica pomeriggio» è una richiesta, e tradurla in un vincolo che il solver sa applicare. Poi si ferma. A costruire il piano è un algoritmo che verifica ogni regola prima di consegnarlo, e che a parità di dati dà sempre lo stesso risultato.",
     },
     {
       q: "Posso modificare manualmente i turni?",
