@@ -153,6 +153,32 @@ Use browser DevTools to resize or emulate:
 
 ---
 
+## Il disallineamento del database (risolto il 2 agosto 2026)
+
+Per giorni il database di produzione è stato indietro di due migrazioni rispetto
+al codice distribuito. Mancavano `planning_runs`, `schedules.planning_run_id`, le
+RPC `salva_piano_intervallo`, `salva_modifiche_intervallo` e
+`applica_riduzione_ore`, e i valori `disciplinare` e `studio` di `tipo_assenza`.
+Di conseguenza `/riepilogo`, `/pianificazione`, la generazione dei piani e — dopo
+il collegamento dell'activity feed — anche `/home` rispondevano con un errore.
+
+**La causa non era una dimenticanza.** `20260730000001_planning_runs.sql`
+conteneva un errore di sintassi: le due policy erano scritte
+`to authenticated for select`, mentre PostgreSQL richiede `for select to
+authenticated`. Quella migrazione non era mai stata applicabile. Corretta e
+applicata; il backfill ha creato 5 run per i 5 schedules esistenti, senza
+toccare le 2309 assegnazioni.
+
+**Cosa impararne:** il registro delle migrazioni (`list_migrations`) elenca solo
+ciò che è passato dal CLI o dall'MCP. Non dice nulla dello schema reale, che va
+letto da `information_schema`. Le due cose possono divergere in entrambe le
+direzioni — sul remoto esistono tre migrazioni (`copertura_festiva_esplicita`,
+`dati_dimostrativi`, `primo_utente_admin`) il cui SQL non è nel repository, il
+che significa che oggi il repo **non è in grado di ricostruire la produzione da
+zero**. Vale la pena recuperare quel SQL prima che serva davvero.
+
+---
+
 ## What's TODO (Non-Blocking)
 
 ### 🎥 Video Asset
@@ -172,10 +198,10 @@ Use browser DevTools to resize or emulate:
     `newsletter_subscriptions` + funzione `iscrivi_newsletter()`
   - `app/api/newsletter/route.ts` — unico endpoint aperto senza sessione
   - `lib/dati/newsletter.ts` — normalizzazione indirizzi (con test)
-- **⚠️ Richiede un passo manuale:** la migrazione **non è stata applicata**.
-  Finché non gira sul progetto Supabase, il form risponde 500. Dopo averla
-  applicata, rigenerare `lib/supabase/types.ts` (la firma di
-  `iscrivi_newsletter` è stata aggiunta a mano nell'attesa).
+- **Applicata e verificata in produzione** il 2 agosto 2026. Provata dall'esterno:
+  normalizza l'indirizzo, non duplica su reinvio, e il campo esca risponde `200`
+  senza creare righe. `anon` non può leggere né scrivere la tabella
+  direttamente — solo eseguire la funzione.
 - **Perché una funzione invece di una policy:** la chiave pubblicabile sta nel
   bundle del browser. Una policy di insert per `anon` renderebbe la tabella
   scrivibile da chiunque. La tabella non ha policy di scrittura: si entra solo

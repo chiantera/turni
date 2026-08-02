@@ -1,6 +1,11 @@
 // Generato da Supabase. Per rigenerare dopo una migrazione:
 //   MCP supabase -> generate_typescript_types (project_id uxwmletpnmsbvdyxktln)
 // Non modificare a mano.
+//
+// Allineato al database di produzione il 2 agosto 2026, dopo aver applicato le
+// due migrazioni che mancavano al remoto. Le voci di newsletter_subscriptions e
+// iscrivi_newsletter sono state ricopiate a mano dall'output di
+// generate_typescript_types: una rigenerazione completa le riprodurrà identiche.
 
 export type Json =
   | string
@@ -223,6 +228,33 @@ export type Database = {
           nazionale?: boolean
           nome?: string
           usa_copertura_festiva?: boolean
+        }
+        Relationships: []
+      }
+      newsletter_subscriptions: {
+        Row: {
+          confermata: boolean
+          confermata_il: string | null
+          creato_il: string
+          email: string
+          id: string
+          origine: string
+        }
+        Insert: {
+          confermata?: boolean
+          confermata_il?: string | null
+          creato_il?: string
+          email: string
+          id?: string
+          origine?: string
+        }
+        Update: {
+          confermata?: boolean
+          confermata_il?: string | null
+          creato_il?: string
+          email?: string
+          id?: string
+          origine?: string
         }
         Relationships: []
       }
@@ -539,8 +571,6 @@ export type Database = {
         }
         Returns: number
       }
-      // Aggiunta a mano in attesa che 20260802000001_newsletter.sql venga
-      // applicata: alla prossima rigenerazione ricomparirà identica.
       iscrivi_newsletter: { Args: { p_email: string }; Returns: undefined }
       e_pianificatore: { Args: never; Returns: boolean }
       ruolo_corrente: {

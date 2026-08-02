@@ -33,10 +33,15 @@ create unique index schedules_run_mese_key on schedules (planning_run_id, mese);
 create index planning_runs_intervallo_idx on planning_runs (dal, al, aggiornato_il desc);
 
 alter table planning_runs enable row level security;
+-- L'ordine è obbligatorio: FOR <comando> precede TO <ruolo>. Scritto al
+-- contrario Postgres rifiuta la definizione, ed è il motivo per cui questa
+-- migrazione non era mai stata applicata al database di produzione.
 create policy "planning runs lettura" on planning_runs
-  to authenticated for select using (public.e_pianificatore() or stato = 'pubblicato');
+  for select to authenticated
+  using (public.e_pianificatore() or stato = 'pubblicato');
 create policy "planning runs scrittura" on planning_runs
-  to authenticated for all using (public.e_pianificatore()) with check (public.e_pianificatore());
+  for all to authenticated
+  using (public.e_pianificatore()) with check (public.e_pianificatore());
 
 create or replace function public.applica_riduzione_ore(
   p_planning_run_id uuid,
