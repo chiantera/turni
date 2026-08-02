@@ -276,6 +276,18 @@ result. Know whose exit code you are reading.
 - `npm run lint` takes over four minutes here. That is precisely why CI exists:
   a check that slow stops being run, and the lint was red on `main` for days.
 
+### `settings.ai` looks authoritative and is not
+
+The `settings` table holds a row `{"chiave": "ai", "valore": {"provider":
+"glm", "modello": null}}`. Changing the AI provider, it is the first thing you
+find and the natural thing to update. **Nothing reads it on the extraction
+path.** `Assistente.tsx` posts only `{ testo, mese }`, so `corpo.provider` is
+null and `ottieniModello()` falls through to `process.env.AI_PROVIDER`. The row
+is written by `/impostazioni` and consumed only by the ad-hoc test widget there.
+
+Changing the provider means changing the env var — in `.env.local` **and** on
+Vercel, which is the one that governs production.
+
 ### Vercel environment variables
 
 `vercel env add` ignores stdin when it detects an agent (non-interactive mode)

@@ -186,6 +186,29 @@ abitudine.
 
 ---
 
+## Il fornitore AI (cambiato il 2 agosto 2026)
+
+`AI_PROVIDER` è passato da `glm` a **`mistral`**, in locale e su Vercel.
+
+**Perché.** `lib/ai/estrazione.ts:66` costruisce il prompt inserendovi nome e
+cognome di ogni lavoratore, e li inviava a `api.z.ai` (Zhipu, Cina). Con dei
+beta tester che caricano dipendenti veri, era un trasferimento extra-UE di dati
+personali di persone che non hanno scelto di usare Turni. Mistral è francese.
+
+**Cosa costa.** `glm-4.7-flash` stava nel piano gratuito;
+`mistral-large-latest` si paga a token. Se serve contenere,
+`mistral-small-latest` è già fra i modelli noti in `provider.ts` e per tradurre
+una frase in un vincolo è probabilmente sufficiente.
+
+**Verificato.** `npm run test:ai` — 6 test di integrazione su 6 con chiamate
+reali, circa 10 secondi a richiesta contro i ~5 di GLM Flash.
+
+**La riga `settings.ai` nel database dice ancora `glm`, ed è irrilevante.**
+Vedi la trappola omonima in `AGENTS.md`: quel valore non viene letto dal
+percorso di estrazione. Non allinearla non è una svista.
+
+---
+
 ## Il disallineamento del database (risolto il 2 agosto 2026)
 
 Per giorni il database di produzione è stato indietro di due migrazioni rispetto

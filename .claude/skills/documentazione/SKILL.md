@@ -69,8 +69,10 @@ contradict the new one. A doc that only grows stops being read.
   Written in Italian. Update the map when files move.
 - **`scripts/verifica-produzione.sh`** — for defects observable from outside.
   Every assertion carries the incident that justifies it.
-- **`CLAUDE.md`** — contains only `@AGENTS.md`. Never duplicate content here;
-  two copies of a rule become two different rules.
+- **`CLAUDE.md`** — includes `@AGENTS.md`, plus the environment links. Never
+  put a **rule** here: it would exist in two places and become two different
+  rules. Stable facts that other providers also need — URLs, project ids — may
+  be repeated, because those tools read `AGENTS.md` and never see this file.
 
 ## The smoke test needs pruning too
 
