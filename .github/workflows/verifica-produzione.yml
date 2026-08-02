@@ -46,3 +46,49 @@ jobs:
 
       - name: Smoke test
         run: ./scripts/verifica-produzione.sh "${{ steps.indirizzo.outputs.url }}"
+
+  # Il job sopra vede solo ciò che vede un visitatore anonimo, e per lui ogni
+  # pagina protetta risponde 307 verso il login — sana o rotta che sia. I due
+  # difetti del 2 agosto 2026 stavano esattamente lì dietro: /home in 500 e
+  # /pianificazione in 404. Questo job entra.
+  autenticato:
+    if: >
+      github.event_name != 'deployment_status' ||
+      github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      BASE_URL: ${{ inputs.url || 'https://turni-psi.vercel.app' }}
+      # Account di sola lettura: nasce con ruolo 'lavoratore', quindi RLS gli
+      # impedisce di scrivere qualunque cosa. Senza i secret i test si saltano
+      # da soli invece di fallire.
+      SMOKE_EMAIL: ${{ secrets.SMOKE_EMAIL }}
+      SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Installa Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Test end-to-end
+        run: npm run test:e2e
+
+      # Traccia e screenshot esistono solo quando qualcosa è fallito, ed è
+      # allora che servono: un test rosso in produzione va capito subito.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

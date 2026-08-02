@@ -37,7 +37,8 @@ Post-login hub with quick access to planning features:
 
 1. **Welcome Header** — Personalized greeting "Bentornato, [User name]! 👋"
 2. **Stats Row** — 3 KPI cards da query reali: piani del mese, ore del mese, lavoratori attivi
-3. **Quick Actions** — 4 button shortcuts: Genera nuovo piano, Visualizza questo mese, Gestisci lavoratori, Gestisci postazioni
+3. **Quick Actions** — 4 scorciatoie: pianifica questo mese, pianifica il mese prossimo, gestisci lavoratori, gestisci postazioni.
+   I percorsi arrivano dal server: puntavano a `/pianificazione` senza mese, che non è una rotta e dava 404.
 4. **Activity Feed** — Cronologia reale: piani generati o aggiornati, lavoratori e postazioni aggiunti
 
 **Tech:**
@@ -105,9 +106,15 @@ public/
   landing-demo.mp4                  → Animazione sintetica 15s (da sostituire)
   landing-demo-fallback.png         → Poster del video
 
-scripts/demo-landing/
-  fotogrammi.html                   → Stato del fotogramma N via ?f=N
-  genera.sh                         → Rende i fotogrammi e codifica l'mp4
+scripts/
+  verifica-produzione.sh            → Smoke test anonimo sul sito in linea
+  demo-landing/
+    fotogrammi.html                 → Stato del fotogramma N via ?f=N
+    genera.sh                       → Rende i fotogrammi e codifica l'mp4
+
+e2e/
+  autenticato.spec.ts               → Playwright: le pagine dietro il login
+playwright.config.ts                → Punta a BASE_URL, default produzione
 ```
 
 ---
@@ -171,6 +178,28 @@ Il giro giornaliero non è ridondante: i progetti Supabase del piano gratuito
 vanno in pausa dopo un periodo di inattività — tre degli altri progetti
 dell'organizzazione sono già `INACTIVE` — e un database in pausa spegne
 l'applicazione senza che nessuno abbia toccato una riga di codice.
+
+### Il punto cieco, e come è stato chiuso
+
+Lo smoke test in bash interroga il sito da anonimo, e per un anonimo **ogni
+pagina protetta risponde 307 verso il login** — sana o rotta che sia. Entrambi
+i difetti del 2 agosto 2026 stavano lì dietro: `/home` che rispondeva 500 e
+`/pianificazione` che dava 404. I 17 controlli li vedevano perfetti.
+
+`e2e/autenticato.spec.ts` (Playwright) entra davvero: fa login e apre
+dashboard, pianificazione e riepilogo, verificando che non siano pagine di
+errore e che non producano errori JavaScript.
+
+**Richiede due secret su GitHub** (Settings → Secrets and variables → Actions):
+`SMOKE_EMAIL` e `SMOKE_PASSWORD`. Senza, i test si saltano da soli invece di
+fallire. L'account va creato dal pannello Supabase — Authentication → Users →
+Add user, con **Auto Confirm** — e lasciato al ruolo predefinito
+`lavoratore`: RLS gli impedisce di scrivere qualsiasi cosa, quindi le
+credenziali in CI non sono un rischio di modifica dei dati.
+
+```bash
+SMOKE_EMAIL=... SMOKE_PASSWORD=... npm run test:e2e
+```
 
 Lo smoke test si può lanciare anche a mano, contro qualunque ambiente:
 
