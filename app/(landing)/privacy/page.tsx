@@ -58,30 +58,37 @@ export default function Privacy() {
         </Voce>
       </Sezione>
 
-      <Sezione titolo="Quando i dati escono dall'Unione Europea">
+      <Sezione titolo="L'assistente in italiano — Mistral AI">
         <p className="text-gray-700 leading-relaxed mb-4">
-          Succede in un caso solo, ed è giusto che tu lo sappia prima di
-          decidere se usare quella funzione.
+          È l&apos;unico punto in cui i tuoi dati raggiungono un terzo diverso
+          da chi ospita il servizio, quindi merita di essere spiegato per
+          intero.
         </p>
         <p className="text-gray-700 leading-relaxed mb-4">
-          Quando scrivi una richiesta in italiano all&apos;assistente — per
-          esempio «Marco è libero la domenica pomeriggio» — il testo{" "}
+          Quando scrivi una richiesta in italiano — per esempio «Marco è libero
+          la domenica pomeriggio» — il testo{" "}
           <strong>
             e l&apos;elenco dei nomi e cognomi dei lavoratori registrati
           </strong>{" "}
-          vengono inviati a un fornitore di modelli linguistici con sede fuori
-          dall&apos;Unione Europea. I nomi servono al modello per capire di chi
-          stai parlando e restituire un vincolo collegato alla persona giusta.
+          vengono inviati a <strong>Mistral AI</strong>, società francese. I
+          nomi servono al modello per capire di chi stai parlando e restituire
+          un vincolo collegato alla persona giusta.
         </p>
         <p className="text-gray-700 leading-relaxed mb-4">
-          Nient&apos;altro esce: né le assenze, né le email, né i piani
+          Il fornitore è europeo: quei dati non lasciano l&apos;Unione. Fino al
+          2 agosto 2026 l&apos;assistente si appoggiava a un fornitore fuori
+          dall&apos;UE; è stato sostituito proprio per evitare quel
+          trasferimento.
+        </p>
+        <p className="text-gray-700 leading-relaxed mb-4">
+          Nient&apos;altro viene inviato: né le assenze, né le email, né i piani
           generati. Il solver che costruisce i turni funziona interamente sui
           nostri sistemi e non contatta alcun servizio esterno.
         </p>
         <p className="text-gray-700 leading-relaxed">
-          Se questo trasferimento non è compatibile con le tue policy, si può
-          usare Turni senza l&apos;assistente: i vincoli si inseriscono
-          manualmente e il resto del prodotto funziona identico.
+          Se preferisci che i nomi non escano affatto, si può usare Turni senza
+          l&apos;assistente: i vincoli si inseriscono manualmente e il resto del
+          prodotto funziona identico.
         </p>
       </Sezione>
 

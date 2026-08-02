@@ -77,7 +77,7 @@ export const LANDING_COPY = {
         "Nessun piano a pagamento: durante la beta si usa gratis",
         "Il video qui sopra è un'illustrazione, non una registrazione del prodotto",
         "Notifiche e app mobile non esistono",
-        "Le richieste in linguaggio naturale passano da un fornitore AI esterno",
+        "Le richieste in linguaggio naturale passano da un fornitore AI esterno (Mistral, in UE)",
       ],
     },
   },
@@ -116,7 +116,7 @@ export const LANDING_COPY = {
     },
     {
       q: "Dove finiscono i miei dati?",
-      a: "Anagrafiche, turni e piani stanno su PostgreSQL gestito da Supabase in un data center dell'Unione Europea; l'applicazione gira su Vercel. Quando si usa l'assistente in italiano, il testo della richiesta e l'elenco dei nomi dei lavoratori vengono inviati a un fornitore di modelli AI esterno all'UE, perché possa riconoscere di chi si parla: è l'unico momento in cui quei dati escono dall'Europa, e riguarda solo quella funzione. Il dettaglio completo è nella pagina Trattamento dei dati.",
+      a: "Anagrafiche, turni e piani stanno su PostgreSQL gestito da Supabase in un data center dell'Unione Europea; l'applicazione gira su Vercel. Quando si usa l'assistente in italiano, il testo della richiesta e l'elenco dei nomi dei lavoratori vengono inviati a Mistral AI, società francese, perché il modello possa capire di chi si sta parlando: è un fornitore esterno, ma resta nell'Unione Europea. Il dettaglio completo è nella pagina Trattamento dei dati.",
     },
   ],
   footer: {
