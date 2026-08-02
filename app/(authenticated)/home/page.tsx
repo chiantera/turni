@@ -1,4 +1,5 @@
 import { attivitaRecenti, type TipoAttivita } from "@/lib/dati/attivita"
+import { meseCorrente, spostaMese } from "@/lib/dati/formato"
 import { statisticheDashboard } from "@/lib/dati/statistiche"
 import { creaClientServer, utenteCorrente } from "@/lib/supabase/server"
 import WelcomeHeader from "./componenti/WelcomeHeader"
@@ -23,6 +24,7 @@ export default async function DashboardPage() {
   const corrente = await utenteCorrente()
   const userName = corrente?.profilo?.nome || "Utente"
 
+  const mese = meseCorrente()
   const [stats, attivita] = await Promise.all([
     statisticheDashboard(supabase),
     attivitaRecenti(supabase),
@@ -43,7 +45,10 @@ export default async function DashboardPage() {
         hoursThisMonth={stats.oreMese}
         workersActive={stats.lavoratoriAttivi}
       />
-      <QuickActions />
+      <QuickActions
+        currentMonthHref={`/pianificazione/${mese}`}
+        nextMonthHref={`/pianificazione/${spostaMese(mese, 1)}`}
+      />
       <ActivityFeed activities={recentActivities} />
     </div>
   )
