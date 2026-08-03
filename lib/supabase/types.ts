@@ -324,6 +324,8 @@ export type Database = {
           id: string
           nome: string | null
           ruolo: Database["public"]["Enums"]["ruolo_utente"]
+          ruolo_aggiornato_da: string | null
+          ruolo_aggiornato_il: string | null
           worker_id: string | null
         }
         Insert: {
@@ -331,6 +333,8 @@ export type Database = {
           id: string
           nome?: string | null
           ruolo?: Database["public"]["Enums"]["ruolo_utente"]
+          ruolo_aggiornato_da?: string | null
+          ruolo_aggiornato_il?: string | null
           worker_id?: string | null
         }
         Update: {
@@ -338,6 +342,8 @@ export type Database = {
           id?: string
           nome?: string | null
           ruolo?: Database["public"]["Enums"]["ruolo_utente"]
+          ruolo_aggiornato_da?: string | null
+          ruolo_aggiornato_il?: string | null
           worker_id?: string | null
         }
         Relationships: []
@@ -572,6 +578,10 @@ export type Database = {
         Returns: number
       }
       iscrivi_newsletter: { Args: { p_email: string }; Returns: undefined }
+      cambia_ruolo: {
+        Args: { p_utente: string; p_ruolo: Database["public"]["Enums"]["ruolo_utente"] }
+        Returns: undefined
+      }
       e_pianificatore: { Args: never; Returns: boolean }
       ruolo_corrente: {
         Args: never

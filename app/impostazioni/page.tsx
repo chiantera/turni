@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache"
 
 import Navigazione from "@/app/componenti/Navigazione"
+import GestioneRuoli from "./GestioneRuoli"
 import ProvaAI from "./ProvaAI"
 import { creaClientServer } from "@/lib/supabase/server"
 
@@ -75,7 +76,12 @@ async function salvaImpostazioni(formData: FormData) {
   revalidatePath("/impostazioni")
 }
 
-export default async function Impostazioni() {
+export default async function Impostazioni({
+  searchParams,
+}: {
+  searchParams: Promise<{ erroreRuolo?: string }>
+}) {
+  const sp = await searchParams
   const sb = await creaClientServer()
   const { data } = await sb.from("settings").select("*")
   const mappa = new Map((data ?? []).map((r) => [r.chiave, r.valore]))
@@ -89,6 +95,8 @@ export default async function Impostazioni() {
         <div>
           <h1 className="text-2xl font-semibold">Impostazioni</h1>
         </div>
+
+        <GestioneRuoli errore={sp.erroreRuolo} />
 
         <form action={salvaImpostazioni} className="space-y-6">
           <section className="scheda p-5 space-y-4">
