@@ -45,3 +45,8 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /blob-report/
+
+# Dati reali del cliente: prospetti turni con nomi di dipendenti veri.
+# Non finiscono in un repository pubblico. Il dataset di prova derivato usa
+# nomi inventati e sta in test/, questi restano solo su questa macchina.
+/turni_dati/

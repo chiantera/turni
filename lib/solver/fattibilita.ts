@@ -156,16 +156,86 @@ export function verificaFattibilita(m: Modello): Fattibilita {
     )
   }
 
-  // Copertura teoricamente impossibile su una postazione senza abilitati
-  for (let p = 0; p < m.postazioni.length; p++) {
-    let abilitati = 0
-    for (let l = 0; l < m.lavoratori.length; l++) {
-      if (m.abilitato[l * m.postazioni.length + p]) abilitati++
+  // --- Capacità delle abilitazioni -----------------------------------------
+  //
+  // Il confronto globale fra ore richieste e ore disponibili non vede il caso
+  // più frequente nei servizi con mansioni di responsabilità: l'organico basta,
+  // ma le persone abilitate a coprirle no. Il piano risulta "fattibile" e poi
+  // esce con dei buchi, che è il modo peggiore di sbagliare.
+  //
+  // Non basta guardare una mansione alla volta: due mansioni servite dalle
+  // stesse persone competono per le stesse ore. Si confronta quindi la domanda
+  // di OGNI GRUPPO di mansioni che pesca da un dato bacino di abilitati contro
+  // la capacità di quel bacino.
+  //
+  // È una condizione necessaria, non sufficiente: se nemmeno tutte le ore degli
+  // abilitati bastano, il piano è certamente impossibile. Il contrario non è
+  // garantito, quindi la verifica non produce mai un falso allarme.
+  const nPost = m.postazioni.length
+  const oreDisponibiliLav: number[] = []
+  for (let l = 0; l < m.lavoratori.length; l++) {
+    const L = m.lavoratori[l]
+    let giorniAssenti = 0
+    for (let g = m.offsetPeriodo; g < m.fineOffsetPeriodo; g++) {
+      if (m.assente[l * m.nGiorni + g]) giorniAssenti++
     }
-    const slotPost = m.slots.filter((s) => s.postazioneIdx === p).length
-    if (slotPost > 0 && abilitati === 0) {
+    oreDisponibiliLav.push(
+      (L.oreSettimanali * giorniPeriodo) / 7 - (L.oreSettimanali / 7) * giorniAssenti,
+    )
+  }
+
+  const orePostazione = new Array<number>(nPost).fill(0)
+  for (const sl of m.slots) {
+    const t = m.turni[sl.turnoIdx]
+    orePostazione[sl.postazioneIdx] += (t.durataMin * t.pesoOre) / 60
+  }
+
+  // Bacino di abilitati di ciascuna mansione, come chiave confrontabile.
+  const bacini = m.postazioni.map((_, p) =>
+    m.lavoratori.map((_, l) => (m.abilitato[l * nPost + p] ? "1" : "0")).join(""),
+  )
+
+  for (let p = 0; p < nPost; p++) {
+    if (orePostazione[p] === 0) continue
+
+    if (!bacini[p].includes("1")) {
       avvisi.push(
         `Nessun lavoratore è abilitato su "${m.postazioni[p].nome}": tutti i suoi turni resteranno scoperti.`,
+      )
+      continue
+    }
+
+    // Tutte le mansioni il cui bacino è contenuto in questo: competono per le
+    // stesse persone, quindi vanno sommate.
+    const dentro: number[] = []
+    for (let q = 0; q < nPost; q++) {
+      if (orePostazione[q] === 0) continue
+      const contenuto = [...bacini[q]].every((c, l) => c === "0" || bacini[p][l] === "1")
+      if (contenuto) dentro.push(q)
+    }
+    // Segnalo solo dal bacino più ampio del gruppo, per non ripetere lo stesso
+    // avviso una volta per mansione.
+    if (dentro.some((q) => bacini[q] !== bacini[p] && bacini[q].includes(bacini[p]))) continue
+
+    const oreGruppo = dentro.reduce((a, q) => a + orePostazione[q], 0)
+    let oreBacino = 0
+    let quanti = 0
+    for (let l = 0; l < m.lavoratori.length; l++) {
+      if (bacini[p][l] === "1") {
+        oreBacino += oreDisponibiliLav[l]
+        quanti++
+      }
+    }
+
+    if (oreBacino + EPSILON_ORE < oreGruppo) {
+      const nomi = dentro.map((q) => `"${m.postazioni[q].nome}"`).join(", ")
+      const mancanti =
+        oreMediePersona > 0 ? Math.ceil((oreGruppo - oreBacino) / oreMediePersona) : 0
+      avvisi.push(
+        `Abilitazioni insufficienti: ${nomi} ${dentro.length === 1 ? "richiede" : "richiedono"} ` +
+          `${formattaOre(oreGruppo * 60)}, ma ${quanti === 1 ? "l'unica persona abilitata ne totalizza" : `le ${quanti} persone abilitate ne totalizzano`} ` +
+          `${formattaOre(oreBacino * 60)}. Servono almeno ${mancanti} ${mancanti === 1 ? "abilitato" : "abilitati"} in più, ` +
+          `altrimenti quei turni resteranno scoperti.`,
       )
     }
   }
