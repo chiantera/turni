@@ -47,22 +47,49 @@ jobs:
       - name: Smoke test
         run: ./scripts/verifica-produzione.sh "${{ steps.indirizzo.outputs.url }}"
 
-  # Il job sopra vede solo ciò che vede un visitatore anonimo, e per lui ogni
+  # Senza questo job, il job sotto gira anche quando le credenziali non
+  # esistono: Playwright salta i suoi test e chiude in verde. È successo dal 3
+  # al 4 agosto 2026 — «5 skipped», conclusione success, nessuna pagina
+  # interrogata. Un verde che non significa niente è peggio di un rosso.
+  #
+  # Il contesto `secrets` non è leggibile in un `if` di job, solo dentro un
+  # passo: serve quindi un job che li guardi e ne pubblichi l'esito.
+  credenziali:
+    if: >
+      github.event_name != 'deployment_status' ||
+      github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      presenti: ${{ steps.controllo.outputs.presenti }}
+    steps:
+      - id: controllo
+        env:
+          SMOKE_EMAIL: ${{ secrets.SMOKE_EMAIL }}
+          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+        run: |
+          if [ -n "$SMOKE_EMAIL" ] && [ -n "$SMOKE_PASSWORD" ]; then
+            echo "presenti=si" >> "$GITHUB_OUTPUT"
+          else
+            echo "presenti=no" >> "$GITHUB_OUTPUT"
+            echo "::warning::SMOKE_EMAIL e SMOKE_PASSWORD non sono configurati: i test autenticati non vengono eseguiti, quindi /home, /pianificazione e /riepilogo NON sono verificate. Vedi HANDOFF.md."
+          fi
+
+  # Il primo job vede solo ciò che vede un visitatore anonimo, e per lui ogni
   # pagina protetta risponde 307 verso il login — sana o rotta che sia. I due
   # difetti del 2 agosto 2026 stavano esattamente lì dietro: /home in 500 e
   # /pianificazione in 404. Questo job entra.
   autenticato:
-    if: >
-      github.event_name != 'deployment_status' ||
-      github.event.deployment_status.state == 'success'
+    needs: credenziali
+    # Senza credenziali il job non parte proprio: nel riepilogo appare grigio
+    # «skipped», che si distingue a colpo d'occhio da un verde.
+    if: needs.credenziali.outputs.presenti == 'si'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     env:
       BASE_URL: ${{ inputs.url || 'https://turni-psi.vercel.app' }}
       # Account di sola lettura: nasce con ruolo 'lavoratore', quindi RLS gli
-      # impedisce di scrivere qualunque cosa. Senza i secret i test si saltano
-      # da soli invece di fallire.
+      # impedisce di scrivere qualunque cosa.
       SMOKE_EMAIL: ${{ secrets.SMOKE_EMAIL }}
       SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
 

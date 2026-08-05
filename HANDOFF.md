@@ -179,7 +179,7 @@ vanno in pausa dopo un periodo di inattività — tre degli altri progetti
 dell'organizzazione sono già `INACTIVE` — e un database in pausa spegne
 l'applicazione senza che nessuno abbia toccato una riga di codice.
 
-### Il punto cieco, e come è stato chiuso
+### Il punto cieco: scritto, non ancora attivo
 
 Lo smoke test in bash interroga il sito da anonimo, e per un anonimo **ogni
 pagina protetta risponde 307 verso il login** — sana o rotta che sia. Entrambi
@@ -190,12 +190,22 @@ i difetti del 2 agosto 2026 stavano lì dietro: `/home` che rispondeva 500 e
 dashboard, pianificazione e riepilogo, verificando che non siano pagine di
 errore e che non producano errori JavaScript.
 
-**Richiede due secret su GitHub** (Settings → Secrets and variables → Actions):
-`SMOKE_EMAIL` e `SMOKE_PASSWORD`. Senza, i test si saltano da soli invece di
-fallire. L'account va creato dal pannello Supabase — Authentication → Users →
-Add user, con **Auto Confirm** — e lasciato al ruolo predefinito
-`lavoratore`: RLS gli impedisce di scrivere qualsiasi cosa, quindi le
-credenziali in CI non sono un rischio di modifica dei dati.
+> **⚠️ Manca un passo manuale: finché non lo si fa, questi test non girano.**
+> Dal 3 al 4 agosto 2026 il job `autenticato` ha chiuso in verde a ogni run
+> senza eseguire nulla — «5 skipped». Ora un run non configurato appare grigio
+> «skipped» con un avviso, invece che verde.
+
+**Servono due secret su GitHub** (Settings → Secrets and variables → Actions):
+`SMOKE_EMAIL` e `SMOKE_PASSWORD`. L'account va creato dal pannello Supabase —
+Authentication → Users → Add user, con **Auto Confirm** — e lasciato al ruolo
+predefinito `lavoratore`: RLS gli impedisce di scrivere qualsiasi cosa, quindi
+le credenziali in CI non sono un rischio di modifica dei dati.
+
+```bash
+gh secret set SMOKE_EMAIL --body "..."      # dopo aver creato l'utente
+gh secret set SMOKE_PASSWORD --body "..."
+gh workflow run "Verifica produzione"       # per verificare subito
+```
 
 ```bash
 SMOKE_EMAIL=... SMOKE_PASSWORD=... npm run test:e2e
@@ -265,6 +275,14 @@ zero**. Vale la pena recuperare quel SQL prima che serva davvero.
 ---
 
 ## What's TODO (Non-Blocking)
+
+### 🔴 Account per i test autenticati — *l'unico che spegne un controllo*
+- **Stato:** i test esistono e non girano. Manca l'utente di sola lettura su
+  Supabase e i due secret su GitHub; i dettagli sono sopra, in «Il punto cieco».
+- **Costo di non farlo:** `/home`, `/pianificazione` e `/riepilogo` non sono
+  verificate da nessuno, né in CI né dopo un deploy. Sono esattamente le tre
+  pagine dove si sono nascosti i guasti del 2 agosto 2026.
+- **Cinque minuti**, ed è l'unica voce di questo elenco che riaccende una spia.
 
 ### 🎥 Video Asset
 - **Attuale:** animazione sintetica di 15 s (139 KB) + poster, generata da

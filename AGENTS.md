@@ -265,6 +265,31 @@ npm run build > /tmp/build.log 2>&1; echo "exit=$?"; tail -20 /tmp/build.log
 Conversely `grep -c` exits 1 when it finds nothing, which is often the desired
 result. Know whose exit code you are reading.
 
+### A skipped test is the same colour as a passing one
+
+The `autenticato` job of `verifica-produzione.yml` reported `success` every run
+from 3 to 4 August 2026 while executing nothing. `e2e/autenticato.spec.ts`
+calls `test.skip()` when `SMOKE_EMAIL` is unset, the secret was never created,
+and Playwright's skip is not a failure — so the job installed Node and Chromium
+for 38 seconds, skipped all 5 tests, and went green. The two pages it exists to
+protect, `/home` and `/pianificazione`, were never opened.
+
+The tell is in the API, not the log: a step that should take 30s took 1s.
+
+```bash
+gh api repos/OWNER/REPO/actions/runs/$ID/jobs \
+  --jq '.jobs[].steps[] | "\(.name) \(.started_at) \(.completed_at)"'
+```
+
+Fix the shape, not just the secret: gate the job so an unconfigured run shows
+as grey **skipped** instead of green. The `secrets` context is not readable in
+a job-level `if`, only inside a step, so a preceding job must publish the
+answer as an output — see the `credenziali` job.
+
+**A green that verifies nothing is worse than a red.** The rule about
+gratuitous assertions has a mirror image: a check that cannot fail is already
+dead, and it is still being trusted.
+
 ### Local environment
 
 - `.next/dev/types` goes stale after a route is deleted and makes
@@ -401,6 +426,6 @@ When you complete a feature or fix:
 
 ---
 
-**Last updated:** 2026-08-02  
+**Last updated:** 2026-08-04  
 **Maintained by:** Claude Code + AI Agents  
 **Language:** Italian (UI/docs) + English (code)
