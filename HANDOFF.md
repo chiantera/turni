@@ -274,6 +274,29 @@ zero**. Vale la pena recuperare quel SQL prima che serva davvero.
 
 ---
 
+## Incidente del 4-9 agosto 2026: 135 milioni di transazioni abortite
+
+**Chiuso il 9 agosto 2026.** Le RPC del piano segnalavano cinque regole di
+dominio permanenti con `errcode = '40001'` (`serialization_failure`), che
+significa «riprova». Qualcuno ha riprovato per cinque giorni a 357 al secondo.
+
+- **Rilevato da:** `pg_stat_database.xact_rollback` — 135.409.553 rollback
+  contro 498.542 commit. `pg_stat_statements` mostrava 3 chiamate, perché non
+  registra le istruzioni che sollevano eccezioni.
+- **Corretto da:** `supabase/migrations/20260809000001_errcode_non_ritentabile.sql`,
+  applicata in produzione il 9 agosto. `40001` → `P0001` in sette punti.
+- **Verificato:** contatore dei rollback fermo, invariato su una finestra di
+  sette minuti, mentre i commit continuavano a salire. Cambiare lo SQLSTATE ha
+  spento il ciclo da solo — la conferma che chi ritentava leggeva quel codice.
+- **Aggiunto:** `lib/dati/errori-piano.ts` traduce i nomi simbolici in risposte
+  HTTP, al posto della mappatura duplicata nei due route handler. L'utente ora
+  legge «una cella è bloccata» invece di «il piano è cambiato».
+
+> **Non chiuso:** *chi* mandava le richieste. Il ritmo costante senza backoff
+> non corrisponde ai ritentativi di `supabase-js`. Non è più urgente — con
+> `P0001` nessuno ricomincia — ma resta un client ignoto da identificare dai log
+> del gateway.
+
 ## What's TODO (Non-Blocking)
 
 ### 🔴 Account per i test autenticati — *l'unico che spegne un controllo*

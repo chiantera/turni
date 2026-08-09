@@ -6,6 +6,7 @@ import {
   validaModifichePiano,
 } from "@/lib/dati/modifiche-piano"
 import { fineDelMese } from "@/lib/dati/intervallo"
+import { interpretaErrorePiano } from "@/lib/dati/errori-piano"
 import { primoDelMese } from "@/lib/solver/tempo"
 import { creaClientServer, ePianificatore } from "@/lib/supabase/server"
 
@@ -182,20 +183,11 @@ export async function PUT(req: Request) {
       p_precondizioni: precondizioni as never,
     })
     if (applicazione.error) {
-      const stato =
-        applicazione.error.code === "42501" ? 403
-          : applicazione.error.code === "P0002" ? 404
-            : applicazione.error.code === "40001" ? 409
-              : 400
-      return NextResponse.json(
-        {
-          errore:
-            applicazione.error.code === "40001"
-              ? "Il piano è cambiato durante il salvataggio. Ricalcola il preview prima di riprovare."
-              : "Salvataggio delle modifiche non riuscito.",
-        },
-        { status: stato },
+      const esito = interpretaErrorePiano(
+        applicazione.error,
+        "Salvataggio delle modifiche non riuscito.",
       )
+      return NextResponse.json({ errore: esito.messaggio }, { status: esito.stato })
     }
 
     return NextResponse.json({

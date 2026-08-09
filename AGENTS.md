@@ -238,6 +238,39 @@ Written the wrong way round the migration is not applicable at all. This is
 why `planning_runs` sat unapplied for days while `/riepilogo`,
 `/pianificazione`, plan generation and `/home` were broken in production.
 
+### An SQLSTATE is a protocol, not a label
+
+```sql
+raise exception 'ASSEGNAZIONE_BLOCCATA' using errcode = '40001';  -- 135M retries
+raise exception 'ASSEGNAZIONE_BLOCCATA' using errcode = 'P0001';  -- correct
+```
+
+`40001` is `serialization_failure`. In Postgres it does not describe an error,
+it makes a promise to everything downstream: *"this failed on a concurrency
+conflict, retry and it may succeed."* Retry logic in clients, poolers and
+gateways keys on exactly that code.
+
+`salva_modifiche_intervallo` and `applica_riduzione_ore` used it for five
+permanent domain rules — a locked assignment stays locked at the millionth
+attempt. Between 4 and 9 August 2026 something read "retry", retried, and never
+stopped: **135,409,553 aborted transactions against 498,542 committed** — 271
+failures per success — at a measured **357 per second**, roughly 31 million
+errors a day for five days on a free-tier project.
+
+Use `P0001` (the code Postgres assigns to `raise exception` on its own) for
+application-defined errors, and let the symbolic message carry the identity.
+The HTTP status is the route handler's decision — see `lib/dati/errori-piano.ts`.
+
+Two diagnostic lessons from finding it:
+
+- **`pg_stat_statements` cannot see this.** It only records statements that
+  complete; a loop of failures is invisible in the first view you reach for.
+  The counter that does not lie is `pg_stat_database.xact_rollback`. Watch the
+  rollback/commit ratio — a healthy database stays under 1%.
+- **Measure the rate, don't infer it.** Two samples of `xact_rollback` a few
+  seconds apart give the live rate. A dense burst in a `limit 100` log window
+  proves only that instant.
+
 ### The middleware guards API routes too
 
 `proxy.ts` intercepts `/api/*` exactly as it intercepts pages. A public

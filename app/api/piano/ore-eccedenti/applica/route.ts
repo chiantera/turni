@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 
+import { interpretaErrorePiano } from "@/lib/dati/errori-piano"
 import { creaClientServer, ePianificatore } from "@/lib/supabase/server"
 
 export async function POST(req: Request) {
@@ -29,17 +30,8 @@ export async function POST(req: Request) {
     p_precondizioni: precondizioni,
   })
   if (error) {
-    const stato =
-      error.code === "42501" ? 403 : error.code === "40001" ? 409 : error.code === "P0002" ? 404 : 400
-    return NextResponse.json(
-      {
-        errore:
-          error.code === "40001"
-            ? "Il piano è cambiato. Ricalcola il preview prima di applicare."
-            : "Applicazione della riduzione non riuscita.",
-      },
-      { status: stato },
-    )
+    const esito = interpretaErrorePiano(error, "Applicazione della riduzione non riuscita.")
+    return NextResponse.json({ errore: esito.messaggio }, { status: esito.stato })
   }
 
   return NextResponse.json({ salvate: data ?? 0 })
