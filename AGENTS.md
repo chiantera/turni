@@ -271,6 +271,41 @@ Two diagnostic lessons from finding it:
   seconds apart give the live rate. A dense burst in a `limit 100` log window
   proves only that instant.
 
+### A plpgsql function is not checked when you create it
+
+```sql
+declare mese date;                                  -- schedules.mese esiste
+...
+insert into schedules (planning_run_id, mese, ...)
+values (run_id, mese, ...)                          -- innocuo
+on conflict (planning_run_id, mese) do update ...;  -- 42702, sempre
+```
+
+plpgsql compiles the SQL inside a function on **first execution**, not at
+`create function`. So this migration applied clean, `list_migrations` showed
+it green, typecheck and tests were untouched — and `salva_piano_intervallo`
+raised `42702: column reference "mese" is ambiguous` every single time it ran.
+Plan generation, the app's main feature, was dead from 30 July to 14 August
+2026. The tell was in the data: every row in `schedules` carried the same
+`aggiornato_il`, because they all came from the demo seed and the function had
+never once succeeded.
+
+Why the `values` list is fine and the `on conflict` is not: the target table's
+columns are not in scope inside `values`, so `mese` there can only be the
+variable. The `on conflict (...)` inference clause names columns of the target
+by definition — both candidates are live, and the default
+`plpgsql.variable_conflict = error` refuses to pick.
+
+Prefix plpgsql variables with `v_` whenever they name anything a column could
+name. `lib/supabase/ambiguita-plpgsql.test.ts` enforces this on the **final**
+definition of each function — the last `create or replace` the ordered
+migrations leave standing — because applied migrations are history and are not
+rewritten; what matters is the state the database ends in.
+
+**Applying a migration is not deploying a feature.** Nothing in this repo
+executes an RPC. Until a smoke test signs in and generates a plan, every
+function in `supabase/migrations/` is unverified code that merely parses.
+
 ### The middleware guards API routes too
 
 `proxy.ts` intercepts `/api/*` exactly as it intercepts pages. A public
@@ -459,6 +494,6 @@ When you complete a feature or fix:
 
 ---
 
-**Last updated:** 2026-08-04  
+**Last updated:** 2026-08-14  
 **Maintained by:** Claude Code + AI Agents  
 **Language:** Italian (UI/docs) + English (code)

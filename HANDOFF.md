@@ -297,7 +297,52 @@ significa «riprova». Qualcuno ha riprovato per cinque giorni a 357 al secondo.
 > `P0001` nessuno ricomincia — ma resta un client ignoto da identificare dai log
 > del gateway.
 
+## La generazione del piano non ha mai funzionato (30 luglio – 14 agosto 2026)
+
+**Diagnosticato il 14 agosto 2026, correzione in produzione ancora da applicare
+(vedi TODO).** «Genera il piano» rispondeva sempre
+`column reference "mese" is ambiguous`.
+
+- **Causa:** `salva_piano_intervallo` dichiarava una variabile plpgsql `mese`;
+  `schedules` ha una colonna `mese`. La clausola `on conflict (planning_run_id,
+  mese)` nomina colonne della tabella di destinazione, quindi entrambi i
+  candidati erano vivi e Postgres si è rifiutato di scegliere (SQLSTATE 42702).
+  La lista `values` accanto, con lo stesso nome, era invece innocua: lì le
+  colonne della destinazione non sono in scope.
+- **Perché è passata inosservata due settimane:** plpgsql compila l'SQL alla
+  prima esecuzione, non a `create function`. La migrazione si è applicata
+  pulita, il registro la dava verde, typecheck e test non la vedono nemmeno.
+- **Prova che non ha mai funzionato:** le 5 righe in `schedules` e le 2309
+  assegnazioni portano tutte lo stesso `aggiornato_il` (30 luglio 2026,
+  01:14:19) — sono il seed dimostrativo. La funzione inserisce un run per
+  chiamata: non è mai andata a buon fine nemmeno una volta.
+- **Riprodotto** su un clone strutturale di `schedules` (`create temp table
+  ... like schedules including all`), con l'errore identico a quello di
+  produzione, e risolto sullo stesso clone rinominando la variabile in
+  `v_mese`, verificando anche il ramo `do update`.
+- **Corretto da:** `supabase/migrations/20260814000001_mese_ambiguo.sql`.
+- **Regressione:** `lib/supabase/ambiguita-plpgsql.test.ts` controlla la
+  definizione *finale* di ogni funzione — le migrazioni applicate sono storia e
+  non si riscrivono, conta lo stato in cui il database finisce.
+
+> **La lezione più larga:** nessun test in questo repository esegue una RPC.
+> Le funzioni in `supabase/migrations/` sono codice che al massimo viene
+> analizzato sintatticamente. Finché uno smoke test autenticato non genera
+> davvero un piano, un difetto come questo può restare in produzione
+> indefinitamente con tutti i controlli verdi — che è precisamente il TODO 🔴
+> qui sotto.
+
 ## What's TODO (Non-Blocking)
+
+### 🔴 Applicare `20260814000001_mese_ambiguo.sql` in produzione
+- **Stato:** file scritto, verificato su un clone della tabella reale,
+  **non applicato**. Il classificatore di Claude Code ha bloccato
+  `apply_migration`, e in questa macchina non c'è la CLI Supabase né un link al
+  progetto.
+- **Costo di non farlo:** «Genera il piano» resta rotto. È la funzione
+  principale del prodotto.
+- **Come farlo:** dalla dashboard Supabase (SQL Editor) incollando il file, o
+  `supabase link --project-ref uxwmletpnmsbvdyxktln && supabase db push`.
 
 ### 🔴 Account per i test autenticati — *l'unico che spegne un controllo*
 - **Stato:** i test esistono e non girano. Manca l'utente di sola lettura su
