@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache"
 
+import BottoneConferma from "@/app/componenti/BottoneConferma"
 import Navigazione from "@/app/componenti/Navigazione"
 import { dataEstesa } from "@/lib/dati/formato"
 import {
@@ -40,21 +41,46 @@ async function aggiungi(formData: FormData) {
   revalidatePath("/lavoratori")
 }
 
+/**
+ * Entrata in servizio e uscita dal servizio.
+ *
+ * Non esiste una cancellazione, e non è una scelta di comodo:
+ * `assignments.worker_id` è dichiarata `on delete restrict`, quindi per
+ * chiunque sia già stato pianificato anche una sola volta un `delete` fallirebbe
+ * comunque nel database. Disattivare toglie la persona dagli elenchi e dalle
+ * nuove pianificazioni senza riscrivere i piani già generati.
+ */
+async function cambiaStato(formData: FormData) {
+  "use server"
+  const sb = await creaClientServer()
+  await sb
+    .from("workers")
+    .update({ attivo: formData.get("attivo") === "si" })
+    .eq("id", String(formData.get("id")))
+  revalidatePath("/lavoratori")
+  revalidatePath("/pianificazione/[mese]", "page")
+}
+
 async function aggiorna(formData: FormData) {
   "use server"
   const sb = await creaClientServer()
   const id = String(formData.get("id"))
 
+  // `attivo` non si tocca qui: lo governa `cambiaStato`. Scriverlo anche da
+  // questo form significherebbe disattivare chiunque a ogni salvataggio, visto
+  // che la casella non c'è più e `formData.get("attivo")` sarebbe sempre nullo.
   await sb
     .from("workers")
     .update({
       nome: String(formData.get("nome") ?? "").trim(),
       cognome: String(formData.get("cognome") ?? "").trim(),
       email: String(formData.get("email") ?? "").trim() || null,
+      // `matricola` è unique: la stringa vuota collide fra due lavoratori.
+      matricola: String(formData.get("matricola") ?? "").trim() || null,
+      note: String(formData.get("note") ?? "").trim() || null,
       ore_settimanali: Number(formData.get("ore_settimanali") ?? 38),
       riposo_min_dopo_notte_h: Number(formData.get("riposo_min_dopo_notte_h") ?? 48),
       max_giorni_consecutivi: Number(formData.get("max_giorni_consecutivi") ?? 6),
-      attivo: formData.get("attivo") === "on",
     })
     .eq("id", id)
 
@@ -122,6 +148,203 @@ export default async function Lavoratori() {
     assenzePerLav.set(a.worker_id, v)
   }
 
+  const tutti = lavoratori.data ?? []
+  const attivi = tutti.filter((l) => l.attivo)
+  const nonAttivi = tutti.filter((l) => !l.attivo)
+
+  // Una sola scheda, usata per entrambi gli elenchi: chi è fuori servizio va
+  // ancora corretto e riattivato, quindi il form resta identico.
+  const scheda = (l: (typeof tutti)[number]) => {
+    const abil = abilPerLav.get(l.id) ?? new Set<string>()
+    const ass = assenzePerLav.get(l.id) ?? []
+    return (
+      <div
+        id={`lavoratore-${l.id}`}
+        key={l.id}
+        className={`scheda scroll-mt-4 p-4 target:ring-2 target:ring-accento ${l.attivo ? "" : "opacity-60"}`}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3 pb-3 border-b border-bordo">
+          <div className="font-medium">
+            {l.cognome} {l.nome}
+            {!l.attivo && (
+              <span className="ml-2 text-xs font-normal text-tenue">(fuori servizio)</span>
+            )}
+          </div>
+          {/* Fuori dal form di modifica: i form non si annidano, e questa
+              azione non deve dipendere dal salvataggio del resto. */}
+          <form action={cambiaStato}>
+            <input type="hidden" name="id" value={l.id} />
+            <input type="hidden" name="attivo" value={l.attivo ? "no" : "si"} />
+            {l.attivo ? (
+              <BottoneConferma
+                etichetta="Disattiva"
+                conferma="Confermi la disattivazione?"
+              />
+            ) : (
+              // Riattivare non distrugge nulla: nessuna conferma.
+              <button type="submit" className="bottone">
+                Riattiva
+              </button>
+            )}
+          </form>
+        </div>
+
+        <form action={aggiorna} className="grid gap-3 sm:grid-cols-4 items-end">
+          <input type="hidden" name="id" value={l.id} />
+          <div>
+            <label className="text-xs text-tenue">Nome</label>
+            <input name="nome" defaultValue={l.nome} className="campo mt-1" required />
+          </div>
+          <div>
+            <label className="text-xs text-tenue">Cognome</label>
+            <input name="cognome" defaultValue={l.cognome} className="campo mt-1" required />
+          </div>
+          <div>
+            <label className="text-xs text-tenue">Email</label>
+            <input
+              name="email"
+              type="email"
+              defaultValue={l.email ?? ""}
+              className="campo mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-tenue">Matricola</label>
+            <input name="matricola" defaultValue={l.matricola ?? ""} className="campo mt-1" />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:col-span-4">
+            <div>
+              <label className="text-xs text-tenue">Ore settimanali</label>
+              <input
+                name="ore_settimanali"
+                type="number"
+                step="0.5"
+                defaultValue={Number(l.ore_settimanali)}
+                className="campo mt-1"
+              />
+            </div>
+            <div>
+              <label
+                className="text-xs text-tenue"
+                title="Il ciclo canonico ne produce 48: la notte finisce alle 07:00 e seguono due riposi."
+              >
+                Riposo dopo notte (h)
+              </label>
+              <input
+                name="riposo_min_dopo_notte_h"
+                type="number"
+                min={11}
+                max={96}
+                defaultValue={l.riposo_min_dopo_notte_h}
+                className="campo mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-tenue">Max giorni consecutivi</label>
+              <input
+                name="max_giorni_consecutivi"
+                type="number"
+                min={1}
+                max={13}
+                defaultValue={l.max_giorni_consecutivi}
+                className="campo mt-1"
+              />
+            </div>
+          </div>
+
+          <div className="sm:col-span-4">
+            <label className="text-xs text-tenue">Note</label>
+            <input name="note" defaultValue={l.note ?? ""} className="campo mt-1" />
+          </div>
+
+          <div className="sm:col-span-4">
+            <div className="text-xs text-tenue mb-1.5">Postazioni abilitate</div>
+            <div className="flex flex-wrap gap-3">
+              {(postazioni.data ?? []).map((p) => (
+                <label key={p.id} className="flex items-center gap-1.5 text-sm">
+                  <input
+                    type="checkbox"
+                    name="postazioni"
+                    value={p.id}
+                    defaultChecked={abil.has(p.id)}
+                  />
+                  {p.nome}
+                </label>
+              ))}
+              {(postazioni.data ?? []).length === 0 && (
+                <span className="text-sm text-tenue">Nessuna postazione definita.</span>
+              )}
+            </div>
+          </div>
+
+          <div className="sm:col-span-4">
+            <button type="submit" className="bottone">
+              Salva
+            </button>
+          </div>
+        </form>
+
+        {/* --- Assenze --- */}
+        <div className="mt-4 pt-4 border-t border-bordo">
+          <div className="text-xs text-tenue mb-2">Assenze programmate</div>
+          {ass.length > 0 && (
+            <ul className="space-y-1 mb-3">
+              {ass.map((a) => (
+                <li key={a.id} className="flex items-center gap-3 text-sm">
+                  <span>
+                    {statoCellaLavoratore({
+                      workerId: a.worker_id,
+                      data: a.dal,
+                      assegnazionePresente: false,
+                      assenze: [a],
+                    })?.etichetta ?? a.tipo}
+                  </span>
+                  <span className="text-tenue">
+                    dal {dataEstesa(a.dal)} al {dataEstesa(a.al)}
+                  </span>
+                  <form action={rimuoviAssenza}>
+                    <input type="hidden" name="id" value={a.id} />
+                    <button type="submit" className="text-allarme text-xs underline">
+                      rimuovi
+                    </button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )}
+          <form action={aggiungiAssenza} className="flex flex-wrap items-end gap-2">
+            <input type="hidden" name="worker_id" value={l.id} />
+            <div>
+              <label className="text-xs text-tenue">Dal</label>
+              <input name="dal" type="date" className="campo mt-1" required />
+            </div>
+            <div>
+              <label className="text-xs text-tenue">Al</label>
+              <input name="al" type="date" className="campo mt-1" required />
+            </div>
+            <div>
+              <label className="text-xs text-tenue">Tipo</label>
+              <select name="tipo" className="campo mt-1">
+                <option value="ferie">Ferie</option>
+                <option value="malattia">Malattia</option>
+                <option value="disciplinare">Disciplinare</option>
+                <option value="studio">Permesso per studiare</option>
+                <option value="permesso">Permesso</option>
+                <option value="l104">Legge 104</option>
+                <option value="formazione">Formazione</option>
+                <option value="altro">Altro</option>
+              </select>
+            </div>
+            <button type="submit" className="bottone">
+              Aggiungi assenza
+            </button>
+          </form>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <>
       <Navigazione />
@@ -129,8 +352,10 @@ export default async function Lavoratori() {
         <div>
           <h1 className="text-2xl font-semibold">Lavoratori</h1>
           <p className="text-sm text-tenue mt-1">
-            {(lavoratori.data ?? []).filter((l) => l.attivo).length} attivi su{" "}
-            {(lavoratori.data ?? []).length} totali.
+            {attivi.length} in servizio su {tutti.length} totali. Chi non lavora più
+            qui si <strong>disattiva</strong>: esce dagli elenchi e dalle nuove
+            pianificazioni, ma i piani già generati restano leggibili. Per questo
+            non esiste un&apos;eliminazione.
           </p>
         </div>
 
@@ -163,178 +388,27 @@ export default async function Lavoratori() {
         </form>
 
         <div className="space-y-4">
-          {(lavoratori.data ?? []).map((l) => {
-            const abil = abilPerLav.get(l.id) ?? new Set<string>()
-            const ass = assenzePerLav.get(l.id) ?? []
-            return (
-              <div
-                id={`lavoratore-${l.id}`}
-                key={l.id}
-                className={`scheda scroll-mt-4 p-4 target:ring-2 target:ring-accento ${l.attivo ? "" : "opacity-60"}`}
-              >
-                <form action={aggiorna} className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr] items-end">
-                  <input type="hidden" name="id" value={l.id} />
-                  <div>
-                    <label className="text-xs text-tenue">Nome</label>
-                    <input name="nome" defaultValue={l.nome} className="campo mt-1" required />
-                  </div>
-                  <div>
-                    <label className="text-xs text-tenue">Cognome</label>
-                    <input name="cognome" defaultValue={l.cognome} className="campo mt-1" required />
-                  </div>
-                  <div>
-                    <label className="text-xs text-tenue">Email</label>
-                    <input
-                      name="email"
-                      type="email"
-                      defaultValue={l.email ?? ""}
-                      className="campo mt-1"
-                    />
-                  </div>
+          {attivi.map(scheda)}
 
-                  <div className="grid grid-cols-3 gap-3 sm:col-span-3">
-                    <div>
-                      <label className="text-xs text-tenue">Ore settimanali</label>
-                      <input
-                        name="ore_settimanali"
-                        type="number"
-                        step="0.5"
-                        defaultValue={Number(l.ore_settimanali)}
-                        className="campo mt-1"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        className="text-xs text-tenue"
-                        title="Il ciclo canonico ne produce 48: la notte finisce alle 07:00 e seguono due riposi."
-                      >
-                        Riposo dopo notte (h)
-                      </label>
-                      <input
-                        name="riposo_min_dopo_notte_h"
-                        type="number"
-                        min={11}
-                        max={96}
-                        defaultValue={l.riposo_min_dopo_notte_h}
-                        className="campo mt-1"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-tenue">Max giorni consecutivi</label>
-                      <input
-                        name="max_giorni_consecutivi"
-                        type="number"
-                        min={1}
-                        max={13}
-                        defaultValue={l.max_giorni_consecutivi}
-                        className="campo mt-1"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="sm:col-span-3">
-                    <div className="text-xs text-tenue mb-1.5">Postazioni abilitate</div>
-                    <div className="flex flex-wrap gap-3">
-                      {(postazioni.data ?? []).map((p) => (
-                        <label key={p.id} className="flex items-center gap-1.5 text-sm">
-                          <input
-                            type="checkbox"
-                            name="postazioni"
-                            value={p.id}
-                            defaultChecked={abil.has(p.id)}
-                          />
-                          {p.nome}
-                        </label>
-                      ))}
-                      {(postazioni.data ?? []).length === 0 && (
-                        <span className="text-sm text-tenue">
-                          Nessuna postazione definita.
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="sm:col-span-3 flex items-center gap-4">
-                    <label className="flex items-center gap-2 text-sm">
-                      <input type="checkbox" name="attivo" defaultChecked={l.attivo} />
-                      in servizio
-                    </label>
-                    <button type="submit" className="bottone">
-                      Salva
-                    </button>
-                  </div>
-                </form>
-
-                {/* --- Assenze --- */}
-                <div className="mt-4 pt-4 border-t border-bordo">
-                  <div className="text-xs text-tenue mb-2">Assenze programmate</div>
-                  {ass.length > 0 && (
-                    <ul className="space-y-1 mb-3">
-                      {ass.map((a) => (
-                        <li key={a.id} className="flex items-center gap-3 text-sm">
-                          <span>
-                            {statoCellaLavoratore({
-                              workerId: a.worker_id,
-                              data: a.dal,
-                              assegnazionePresente: false,
-                              assenze: [a],
-                            })?.etichetta ?? a.tipo}
-                          </span>
-                          <span className="text-tenue">
-                            dal {dataEstesa(a.dal)} al {dataEstesa(a.al)}
-                          </span>
-                          <form action={rimuoviAssenza}>
-                            <input type="hidden" name="id" value={a.id} />
-                            <button
-                              type="submit"
-                              className="text-allarme text-xs underline"
-                            >
-                              rimuovi
-                            </button>
-                          </form>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  <form
-                    action={aggiungiAssenza}
-                    className="flex flex-wrap items-end gap-2"
-                  >
-                    <input type="hidden" name="worker_id" value={l.id} />
-                    <div>
-                      <label className="text-xs text-tenue">Dal</label>
-                      <input name="dal" type="date" className="campo mt-1" required />
-                    </div>
-                    <div>
-                      <label className="text-xs text-tenue">Al</label>
-                      <input name="al" type="date" className="campo mt-1" required />
-                    </div>
-                    <div>
-                      <label className="text-xs text-tenue">Tipo</label>
-                      <select name="tipo" className="campo mt-1">
-                        <option value="ferie">Ferie</option>
-                        <option value="malattia">Malattia</option>
-                        <option value="disciplinare">Disciplinare</option>
-                        <option value="studio">Permesso per studiare</option>
-                        <option value="permesso">Permesso</option>
-                        <option value="l104">Legge 104</option>
-                        <option value="formazione">Formazione</option>
-                        <option value="altro">Altro</option>
-                      </select>
-                    </div>
-                    <button type="submit" className="bottone">
-                      Aggiungi assenza
-                    </button>
-                  </form>
-                </div>
-              </div>
-            )
-          })}
-
-          {(lavoratori.data ?? []).length === 0 && (
+          {tutti.length === 0 && (
             <p className="text-sm text-tenue">Nessun lavoratore. Aggiungine uno qui sopra.</p>
           )}
+          {tutti.length > 0 && attivi.length === 0 && (
+            <p className="text-sm text-tenue">
+              Nessuno in servizio. Riattiva qualcuno qui sotto, oppure aggiungi una
+              persona.
+            </p>
+          )}
         </div>
+
+        {nonAttivi.length > 0 && (
+          <details className="border-t border-bordo pt-3">
+            <summary className="cursor-pointer text-sm text-tenue">
+              Fuori servizio ({nonAttivi.length})
+            </summary>
+            <div className="space-y-4 mt-4">{nonAttivi.map(scheda)}</div>
+          </details>
+        )}
       </main>
     </>
   )

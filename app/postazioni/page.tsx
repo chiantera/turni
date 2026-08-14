@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache"
 
+import BottoneConferma from "@/app/componenti/BottoneConferma"
 import Navigazione from "@/app/componenti/Navigazione"
 import { creaClientServer } from "@/lib/supabase/server"
 
@@ -29,19 +30,26 @@ async function aggiorna(formData: FormData) {
       nome: String(formData.get("nome") ?? "").trim(),
       descrizione: String(formData.get("descrizione") ?? "").trim() || null,
       colore: String(formData.get("colore") ?? "#0ea5e9"),
-      attiva: formData.get("attiva") === "on",
+      // `attiva` non si tocca qui: la governa `cambiaStato`.
     })
     .eq("id", id)
   revalidatePath("/postazioni")
   revalidatePath("/pianificazione/[mese]", "page")
 }
 
-async function elimina(formData: FormData) {
+/**
+ * Messa fuori uso e rimessa in uso.
+ *
+ * Si disattiva invece di cancellare: le postazioni sono referenziate dai piani
+ * già generati, e cancellarle ne riscriverebbe la storia.
+ */
+async function cambiaStato(formData: FormData) {
   "use server"
   const sb = await creaClientServer()
-  // Disattivo invece di cancellare: le postazioni sono referenziate dai piani
-  // già generati, e cancellarle ne riscriverebbe la storia.
-  await sb.from("positions").update({ attiva: false }).eq("id", String(formData.get("id")))
+  await sb
+    .from("positions")
+    .update({ attiva: formData.get("attiva") === "si" })
+    .eq("id", String(formData.get("id")))
   revalidatePath("/postazioni")
   revalidatePath("/pianificazione/[mese]", "page")
 }
@@ -94,14 +102,41 @@ export default async function Postazioni() {
 
         <div className="space-y-3">
           {(data ?? []).map((p) => (
-            <form
+            <div
               id={`postazione-${p.id}`}
               key={p.id}
-              action={aggiorna}
-              className={`scheda scroll-mt-4 p-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto_auto] items-end target:ring-2 target:ring-accento ${
+              className={`scheda scroll-mt-4 p-4 target:ring-2 target:ring-accento ${
                 p.attiva ? "" : "opacity-50"
               }`}
             >
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-3 pb-3 border-b border-bordo">
+                <div className="font-medium">
+                  {p.nome}
+                  {!p.attiva && (
+                    <span className="ml-2 text-xs font-normal text-tenue">(fuori uso)</span>
+                  )}
+                </div>
+                {/* Fuori dal form di modifica: i form non si annidano. */}
+                <form action={cambiaStato}>
+                  <input type="hidden" name="id" value={p.id} />
+                  <input type="hidden" name="attiva" value={p.attiva ? "no" : "si"} />
+                  {p.attiva ? (
+                    <BottoneConferma
+                      etichetta="Disattiva"
+                      conferma="Confermi la disattivazione?"
+                    />
+                  ) : (
+                    <button type="submit" className="bottone">
+                      Riattiva
+                    </button>
+                  )}
+                </form>
+              </div>
+
+              <form
+                action={aggiorna}
+                className="grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto] items-end"
+              >
               <input type="hidden" name="id" value={p.id} />
               <div>
                 <label className="text-xs text-tenue">Nome</label>
@@ -124,22 +159,17 @@ export default async function Postazioni() {
                   className="campo mt-1 h-9 w-16 p-1"
                 />
               </div>
-              <label className="flex items-center gap-2 text-sm pb-2">
-                <input type="checkbox" name="attiva" defaultChecked={p.attiva} />
-                attiva
-              </label>
               <button type="submit" className="bottone">
                 Salva
               </button>
-            </form>
+              </form>
+            </div>
           ))}
 
           {(data ?? []).length === 0 && (
             <p className="text-sm text-tenue">Nessuna postazione. Aggiungine una qui sopra.</p>
           )}
         </div>
-
-        <form action={elimina} className="hidden" />
       </main>
     </>
   )
