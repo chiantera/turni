@@ -299,8 +299,7 @@ significa «riprova». Qualcuno ha riprovato per cinque giorni a 357 al secondo.
 
 ## La generazione del piano non ha mai funzionato (30 luglio – 14 agosto 2026)
 
-**Diagnosticato il 14 agosto 2026, correzione in produzione ancora da applicare
-(vedi TODO).** «Genera il piano» rispondeva sempre
+**Chiuso il 14 agosto 2026.** «Genera il piano» rispondeva sempre
 `column reference "mese" is ambiguous`.
 
 - **Causa:** `salva_piano_intervallo` dichiarava una variabile plpgsql `mese`;
@@ -320,7 +319,17 @@ significa «riprova». Qualcuno ha riprovato per cinque giorni a 357 al secondo.
   ... like schedules including all`), con l'errore identico a quello di
   produzione, e risolto sullo stesso clone rinominando la variabile in
   `v_mese`, verificando anche il ramo `do update`.
-- **Corretto da:** `supabase/migrations/20260814000001_mese_ambiguo.sql`.
+- **Corretto da:** `supabase/migrations/20260814000001_mese_ambiguo.sql`,
+  applicata in produzione il 14 agosto 2026. Verificata rileggendo `pg_proc`:
+  la funzione installata dichiara `v_mese`, zero occorrenze residue di `mese`.
+- **Verificato per intero:** il corpo della funzione è stato eseguito su cloni
+  temporanei di tutte e quattro le tabelle (`create temp table ... like ...
+  including all`, che `pg_temp` antepone a `public`), su un intervallo di due
+  mesi e per due volte di fila. La rigenerazione lascia 2 piani, 3 assegnazioni
+  e 2 violazioni — non 4, 6 e 4 — con `versione` da 1 a 2 e `seed` da 42 a 99:
+  gli upsert su `schedules` e `assignments`, il `delete`+`insert` delle
+  violazioni e il ramo `primo_mese` per le violazioni senza data funzionano
+  tutti. Dietro l'ambiguità non c'era un secondo difetto.
 - **Regressione:** `lib/supabase/ambiguita-plpgsql.test.ts` controlla la
   definizione *finale* di ogni funzione — le migrazioni applicate sono storia e
   non si riscrivono, conta lo stato in cui il database finisce.
@@ -333,16 +342,6 @@ significa «riprova». Qualcuno ha riprovato per cinque giorni a 357 al secondo.
 > qui sotto.
 
 ## What's TODO (Non-Blocking)
-
-### 🔴 Applicare `20260814000001_mese_ambiguo.sql` in produzione
-- **Stato:** file scritto, verificato su un clone della tabella reale,
-  **non applicato**. Il classificatore di Claude Code ha bloccato
-  `apply_migration`, e in questa macchina non c'è la CLI Supabase né un link al
-  progetto.
-- **Costo di non farlo:** «Genera il piano» resta rotto. È la funzione
-  principale del prodotto.
-- **Come farlo:** dalla dashboard Supabase (SQL Editor) incollando il file, o
-  `supabase link --project-ref uxwmletpnmsbvdyxktln && supabase db push`.
 
 ### 🔴 Account per i test autenticati — *l'unico che spegne un controllo*
 - **Stato:** i test esistono e non girano. Manca l'utente di sola lettura su
