@@ -381,6 +381,39 @@ is written by `/impostazioni` and consumed only by the ad-hoc test widget there.
 Changing the provider means changing the env var — in `.env.local` **and** on
 Vercel, which is the one that governs production.
 
+### …but `settings.pesi` and `settings.regole` are
+
+The same table, the opposite rule. `lib/dati/piano.ts` spreads the stored row
+**over** the code default:
+
+```ts
+const pesi = { ...PESI_DEFAULT, ...(imp.get("pesi") as Partial<Pesi>) }
+```
+
+The row in production lists every key explicitly, so **each one shadows
+`PESI_DEFAULT`**. Editing `lib/solver/modello.ts` alone changes nothing for the
+running system — it only affects new installs and the tests. Tuning the solver
+means changing both, or moving the slider in `/impostazioni`.
+
+Two rows in one table, one inert and one authoritative, and no hint of which is
+which at the call site. Check who reads a setting before you change it, in
+either direction.
+
+### Standard deviation is invariant under translation
+
+Obvious written down, easy to miss in code. `costoEquita()` measured the spread
+of raw hours; making it measure the spread of `hours − contractualTarget`
+changes **nothing at all** when every contract is equal — the target is one
+constant, and subtracting a constant leaves the deviation untouched. It only
+bites when contracts differ, which is exactly where the old metric was wrong:
+a half-time worker perfectly on their own target still read as "unbalanced",
+so the solver was pushed to load them up.
+
+The lesson is about verification, not statistics: the fix looked right, typed
+clean, and all tests passed — and a before/after measurement over 12 generated
+plans showed it was bit-for-bit identical. **Measure the change you claim to
+have made.** The knob that actually moved the number was the weight.
+
 ### Vercel environment variables
 
 `vercel env add` ignores stdin when it detects an agent (non-interactive mode)

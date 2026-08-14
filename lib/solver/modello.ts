@@ -174,7 +174,14 @@ export const PESI_DEFAULT: Pesi = {
   rotazione_avanti: 40,
   equita_notti: 30,
   equita_weekend: 25,
-  equita_ore: 20,
+  // Alla pari con `ore_target`: rispettare il proprio contratto e non stare
+  // peggio dei colleghi contano uguale. A 20 le ore si sparpagliavano fino a
+  // 10h di scarto fra la persona più carica e la meno carica sullo stesso
+  // mese; misurato su 15 piani (7..14 lavoratori x 3 semi), portarlo a 100
+  // riduce la dispersione media da 7,2h a 5,7h senza lasciare scoperto un
+  // solo turno. Costa circa 0,3 notti di dispersione in più: le notti e le
+  // ore non si possono appianare entrambe al massimo.
+  equita_ore: 100,
   stabilita_postazione: 15,
   giorno_isolato: 35,
   riposo_isolato: 25,

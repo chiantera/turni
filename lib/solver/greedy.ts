@@ -15,7 +15,10 @@ import type { Modello, Stato } from "./tipi"
 import {
   assegna,
   costoLavoratore,
+  MIN_IN_H,
+  minutiAssegnatiPeriodo,
   puoAssegnare,
+  targetMinutiPeriodo,
   type VincoliCompilati,
 } from "./vincoli"
 
@@ -44,6 +47,24 @@ export function costruisciGreedy(
   const costoCorrente = new Float64Array(nL)
   for (let l = 0; l < nL; l++) costoCorrente[l] = costoLavoratore(m, s, c, l)
 
+  // Carico relativo al contratto, mantenuto incrementale come i costi.
+  //
+  // `costoLavoratore` tira ognuno verso il PROPRIO monte ore, ma non guarda
+  // mai come stanno gli altri: fra due candidati ugualmente ammissibili la
+  // scelta finiva ai pareggi, rotti da `mescola` — cioè a caso. Qui vince chi
+  // è più indietro rispetto al proprio contratto.
+  //
+  // Il termine è un valore per-candidato, quindi confrontarlo dentro lo stesso
+  // slot è esattamente la preferenza voluta, e resta O(1): ricalcolare
+  // `costoEquita()` per ogni candidato sarebbe quadratico, che è il motivo per
+  // cui esiste la cache qui sopra.
+  const targetMin = new Float64Array(nL)
+  const minutiCorrenti = new Float64Array(nL)
+  for (let l = 0; l < nL; l++) {
+    targetMin[l] = targetMinutiPeriodo(m, c, l)
+    minutiCorrenti[l] = minutiAssegnatiPeriodo(m, s, l)
+  }
+
   for (const sl of ordine) {
     const candidati: number[] = []
     for (let l = 0; l < nL; l++) {
@@ -58,7 +79,8 @@ export function costruisciGreedy(
     for (const l of candidati) {
       assegna(m, s, sl.idx, l)
       const nuovo = costoLavoratore(m, s, c, l)
-      const delta = nuovo - costoCorrente[l]
+      const squilibrio = ((minutiCorrenti[l] - targetMin[l]) / MIN_IN_H) * m.pesi.equita_ore
+      const delta = nuovo - costoCorrente[l] + squilibrio
       // Ripristino subito: la valutazione dev'essere senza effetti collaterali.
       s.assegnatoA[sl.idx] = -1
       s.turnoDelGiorno[l * m.nGiorni + sl.giornoIdx] = -1
@@ -73,6 +95,16 @@ export function costruisciGreedy(
     if (migliore >= 0) {
       assegna(m, s, sl.idx, migliore)
       costoCorrente[migliore] = costoLavoratore(m, s, c, migliore)
+      const tt = m.turni[sl.turnoIdx]
+      // Solo i giorni dentro il periodo: l'orizzonte include giorni di
+      // contesto per la continuità della rotazione, che non sono ore nostre.
+      if (
+        tt.contaNelleOre &&
+        sl.giornoIdx >= m.offsetPeriodo &&
+        sl.giornoIdx < m.fineOffsetPeriodo
+      ) {
+        minutiCorrenti[migliore] += tt.durataMin * tt.pesoOre
+      }
     }
   }
 

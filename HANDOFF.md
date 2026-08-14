@@ -341,6 +341,51 @@ significa «riprova». Qualcuno ha riprovato per cinque giorni a 357 al secondo.
 > indefinitamente con tutti i controlli verdi — che è precisamente il TODO 🔴
 > qui sotto.
 
+## Equità delle ore fra lavoratori (14 agosto 2026)
+
+Richiesta: appianare le ore lavorate per periodo, a meno che non ci sia una
+buona ragione per uno squilibrio. Periodo = l'intero intervallo del piano;
+il bilanciamento è una preferenza fra candidati ammissibili, mai un vincolo.
+
+**Cosa non era il problema.** `costoLavoratore()` tira già ognuno verso il
+proprio monte ore contrattuale, settimana per settimana, con peso 100. E le
+fasi costruttive da sole lasciano due persone a zero ore su nove — ma la
+ricerca locale lo ripara entro 1,5 s, e la produzione usa 10 s.
+
+**Cosa era.** `costoEquita()`, l'unico termine che confronta i lavoratori fra
+loro, pesava 20 contro 100, e misurava le ore **assolute** invece dello scarto
+dal contratto.
+
+**Cosa è cambiato.**
+
+1. `costoEquita()` misura ora il residuo `ore − target`. Nota bene: a contratti
+   uguali questo è un no-op, perché la deviazione standard è invariante per
+   traslazione. Serve solo a contratti misti, dove riduce la dispersione media
+   dei residui da 17,9 h a 11,2 h.
+2. La fase greedy sceglie fra i candidati ammissibili chi è più indietro
+   rispetto al proprio contratto, invece di rompere i pareggi a caso. O(1) per
+   candidato, con un contatore incrementale.
+3. `equita_ore` da 20 a **100**, alla pari con `ore_target` — la modifica che
+   sposta davvero il numero. **Cambiata sia in `PESI_DEFAULT` sia nella riga
+   `settings.pesi` in produzione**: quella riga elenca ogni chiave esplicita e
+   scavalca il default, quindi il solo codice non avrebbe fatto nulla.
+
+**Misure** (15 piani: 7..14 lavoratori × 3 semi, budget di produzione):
+
+| | dispersione ore | dispersione notti | scoperte |
+|---|---|---|---|
+| `equita_ore` 20 | 7,20 h | 2,13 | 0 |
+| `equita_ore` 100 | **5,73 h** | 2,47 | 0 |
+
+Il costo è dichiarato: circa 0,3 notti di dispersione in più. Notti e ore non
+si appianano entrambe al massimo. Si torna indietro dallo slider in
+`/impostazioni`, senza toccare il codice.
+
+**Test:** `lib/solver/equita.test.ts`, con budget in *iterazioni* e non in
+millisecondi (è l'unico modo perché la ricerca locale sia riproducibile). La
+soglia è 8 h: col peso vecchio la dispersione arrivava a 11 h, col nuovo resta
+a 7 h — il test può fallire, ed è il motivo per cui vale qualcosa.
+
 ## What's TODO (Non-Blocking)
 
 ### 🔴 Account per i test autenticati — *l'unico che spegne un controllo*

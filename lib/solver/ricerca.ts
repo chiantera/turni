@@ -75,7 +75,7 @@ export function ottimizza(
   for (let l = 0; l < nL; l++) sommaLav += costoLav[l]
   let scoperti = 0
   for (let i = 0; i < nSlot; i++) if (s.assegnatoA[i] === -1) scoperti++
-  let equita = costoEquita(m, s)
+  let equita = costoEquita(m, s, c)
   let costo = sommaLav + equita + scoperti * COSTO_SCOPERTO
   const costoIniziale = costo
 
@@ -125,7 +125,7 @@ export function ottimizza(
     }
     let nuoviScoperti = 0
     for (let i = 0; i < nSlot; i++) if (s.assegnatoA[i] === -1) nuoviScoperti++
-    const nuovaEquita = costoEquita(m, s)
+    const nuovaEquita = costoEquita(m, s, c)
     const nuovoCosto =
       nuovaSommaLav + nuovaEquita + nuoviScoperti * COSTO_SCOPERTO
 

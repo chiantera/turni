@@ -16,7 +16,7 @@
 import { formattaOre } from "./tempo"
 import type { Modello, Stato, Violazione } from "./tipi"
 
-const MIN_IN_H = 60
+export const MIN_IN_H = 60
 const MS_IN_H = 3_600_000
 
 // ---------------------------------------------------------------------------
@@ -875,30 +875,66 @@ export function costoLavoratore(
   return costo
 }
 
+/**
+ * Minuti contrattuali attesi da un lavoratore sul periodo pianificato.
+ *
+ * Stessa formula di `riepiloghi()` e della colonna «Ore» della griglia: il
+ * monte ore settimanale riproporzionato ai giorni effettivi. Sta qui, e non
+ * copiata in tre punti, perché costo individuale, equità e fase greedy devono
+ * misurare lo stesso target — override da vincolo DSL compresi.
+ */
+export function targetMinutiPeriodo(m: Modello, c: VincoliCompilati, lav: number): number {
+  const oreSett = c.oreOverride.get(lav) ?? m.lavoratori[lav].oreSettimanali
+  return (oreSett * MIN_IN_H * (m.fineOffsetPeriodo - m.offsetPeriodo)) / 7
+}
+
+/** Minuti già assegnati a un lavoratore dentro il periodo pianificato. */
+export function minutiAssegnatiPeriodo(m: Modello, s: Stato, lav: number): number {
+  let minuti = 0
+  for (let g = m.offsetPeriodo; g < m.fineOffsetPeriodo; g++) {
+    const t = s.turnoDelGiorno[lav * m.nGiorni + g]
+    if (t === -1) continue
+    const tt = m.turni[t]
+    if (tt.contaNelleOre) minuti += tt.durataMin * tt.pesoOre
+  }
+  return minuti
+}
+
 /** Equità: quanto è sbilanciata la distribuzione fra i lavoratori. */
-export function costoEquita(m: Modello, s: Stato): number {
+export function costoEquita(m: Modello, s: Stato, c: VincoliCompilati): number {
   const nL = m.lavoratori.length
   const nG = m.nGiorni
   const notti = new Float64Array(nL)
   const festivi = new Float64Array(nL)
-  const minuti = new Float64Array(nL)
+  const scartoOre = new Float64Array(nL)
 
   for (let l = 0; l < nL; l++) {
+    let minuti = 0
     for (let g = m.offsetPeriodo; g < m.fineOffsetPeriodo; g++) {
       const t = s.turnoDelGiorno[l * nG + g]
       if (t === -1) continue
       const tt = m.turni[t]
       if (tt.isNotte) notti[l]++
       if (m.giornoFestivo[g]) festivi[l]++
-      if (tt.contaNelleOre) minuti[l] += tt.durataMin * tt.pesoOre
+      if (tt.contaNelleOre) minuti += tt.durataMin * tt.pesoOre
     }
+    // Scarto dal PROPRIO contratto, non ore assolute.
+    //
+    // Misurare la dispersione delle ore assolute è sbagliato appena due
+    // contratti differiscono: un part-time perfettamente in pari col proprio
+    // monte ore risultava «sbilanciato», e il solver era incentivato a
+    // caricarlo per ridurre la deviazione. Un contratto più piccolo è una
+    // buona ragione per lavorare meno; essere indietro sul proprio non lo è.
+    scartoOre[l] = (minuti - targetMinutiPeriodo(m, c, l)) / MIN_IN_H
   }
 
   // Deviazione standard: penalizza chi si accolla più notti degli altri.
+  // Nota: notti e festivi restano in valore assoluto. Lo stesso ragionamento
+  // sui contratti varrebbe anche per loro, ma è un cambiamento separato.
   return (
     deviazione(notti) * m.pesi.equita_notti +
     deviazione(festivi) * m.pesi.equita_weekend +
-    (deviazione(minuti) / MIN_IN_H) * m.pesi.equita_ore
+    deviazione(scartoOre) * m.pesi.equita_ore
   )
 }
 
@@ -926,7 +962,7 @@ export function costoTotale(m: Modello, s: Stato, c: VincoliCompilati): Costo {
     sommaLav += perLav[l]
   }
 
-  const eq = costoEquita(m, s)
+  const eq = costoEquita(m, s, c)
   return {
     totale: scoperti * COSTO_SCOPERTO + sommaLav + eq,
     scoperti,
