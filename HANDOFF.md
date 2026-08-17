@@ -386,6 +386,53 @@ millisecondi (è l'unico modo perché la ricerca locale sia riproducibile). La
 soglia è 8 h: col peso vecchio la dispersione arrivava a 11 h, col nuovo resta
 a 7 h — il test può fallire, ed è il motivo per cui vale qualcosa.
 
+## Configurazione reale al posto dei dati dimostrativi (18 agosto 2026)
+
+I dati finti («Marco Rossi», «Reparto A») sono stati cancellati e sostituiti con
+la configurazione vera del servizio, letta dai prospetti in `turni_dati/`.
+
+**I nominativi stanno solo nel database, mai nel repository.** Questo repository
+è pubblico: i cognomi di 28 dipendenti di una cooperativa identificabile non
+possono finire in un file di migrazione. Chi ricostruisce l'ambiente da zero
+trova quindi lo schema ma non l'anagrafica — è voluto.
+
+- **2 postazioni:** Stradora (C.S.R.R. residenziale) e Il Bruco.
+- **18 sigle di turno**, con durate reali da 4,5 h a 11,5 h: `Ma Mb Mc Md Me Mf`
+  e `MAP` al mattino, `Pa Pb Pc Pd Pe Pf` e `AP` al pomeriggio, `N1 N2 N` la
+  notte, più `PRG`. `MAP` e `AP` appartengono a Il Bruco, il resto a Stradora.
+- **28 operatori**, 27 attivi più un tirocinante disattivato per non contarlo
+  nella copertura. Solo cognome: inventare un nome di battesimo sarebbe stato
+  peggio di lasciarlo vuoto. Le grafie non sono verificate.
+- **126 regole di copertura**: una persona per sigla, ogni giorno. Attenzione,
+  **non è letta dal prospetto di agosto**: deriva dalla legenda, dove ogni sigla
+  è un ruolo distinto. Regge la prova aritmetica — 917 h richieste a settimana
+  contro 1026 disponibili, 89,4% impegnato — ma va confrontata con la realtà in
+  `/copertura`.
+
+### Tre cose da chiarire col coordinatore
+
+- **`Mb` e `Md` hanno durate incoerenti nella legenda**: entrambe date 7,5 h, ma
+  7:00→14:00 e 7:30→14:30 sono 7 h. Inserite come 7 h, perché `durata_min` non
+  serve solo a contare le ore: `modello.ts` ne ricava l'ora di fine con
+  `inizioMin + durataMin`, e da quella dipendono i riposi minimi. Sbagliarla
+  falserebbe un vincolo di sicurezza, non un conteggio.
+- **`PRG` compare due volte** nella legenda, identica in mattino e pomeriggio
+  (8:00–14:00). La legenda del prospetto però parla di «8:00–14:00 **o**
+  14:00–20:00»: se la variante pomeridiana si usa, serve una seconda sigla.
+- **Tutti a 38 h settimanali** e tutti abilitati su entrambe le postazioni:
+  nessuno dei due dati era nei documenti. I part-time vanno corretti in
+  `/lavoratori`, e ora contano davvero — l'equità delle ore è misurata sullo
+  scarto dal contratto individuale.
+
+### Il ciclo di riferimento non si applica più
+
+Il README descrive un ciclo 7h/7h/10h con rapporto 2:2:1, e `ciclico.ts`
+costruisce squadre su quel modello. Con 18 sigle di durata diversa quella fase
+non ha più un ciclo da chiudere: la generazione ricade su greedy più ricerca
+locale. Funziona, ma il piano non avrà la rotazione canonica M→P→N, e la parte
+del README che la descrive ora vale per il caso teorico, non per questo
+servizio.
+
 ## What's TODO (Non-Blocking)
 
 ### 🔴 Account per i test autenticati — *l'unico che spegne un controllo*
