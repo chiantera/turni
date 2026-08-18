@@ -227,6 +227,14 @@ holds three migrations whose SQL is nowhere in this repo
 (`copertura_festiva_esplicita`, `dati_dimostrativi`, `primo_utente_admin`), so
 **the repository cannot currently rebuild production from scratch.**
 
+The other direction happened on 18 August 2026:
+`20260818000001_congedo_parentale.sql` is in this repo and applied to the
+remote, but was run through `execute_sql` rather than `apply_migration`, so the
+ledger has never heard of it. `supabase migration list` will show it as
+pending forever. It is written `add value if not exists`, so re-applying is a
+no-op — which is the property to give any DDL that reaches a database by an
+unusual route.
+
 ### RLS policy syntax: `FOR` before `TO`
 
 ```sql

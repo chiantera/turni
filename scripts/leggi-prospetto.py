@@ -58,7 +58,11 @@ COPERTURA_FISSA = ["MA", "MB", "MC", "MD", "ME", "MF",
 # N1/N2), RD e' reperibilita' diurna (legenda: «da 30 min prima a 30 min dopo
 # ogni turno»), R e' riposo.
 NON_TURNI = {"SN", "RD", "R"}
-ASSENZE = {"X": "ferie", "MAL": "malattia"}
+# `C` non e' nella legenda del prospetto: significa congedo parentale, e lo si e'
+# saputo chiedendo al coordinatore dopo che due operatori risultavano assenti per
+# 12 giornate senza spiegazione. Le sigle sconosciute vengono segnalate a schermo
+# proprio perche' finiscano cosi', chiarite, invece di sparire dal conto.
+ASSENZE = {"X": "ferie", "MAL": "malattia", "C": "congedo"}
 ORE_MESE_FULL_TIME = 151.92  # dall'intestazione del prospetto
 
 

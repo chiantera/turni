@@ -332,6 +332,7 @@ export default async function Lavoratori() {
                 <option value="studio">Permesso per studiare</option>
                 <option value="permesso">Permesso</option>
                 <option value="l104">Legge 104</option>
+                <option value="congedo">Congedo parentale</option>
                 <option value="formazione">Formazione</option>
                 <option value="altro">Altro</option>
               </select>

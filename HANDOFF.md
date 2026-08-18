@@ -478,15 +478,22 @@ consuma quasi tutto.
 
 ### Cosa resta aperto
 
-- **`C` non è in legenda, e resta ignoto** — 12 occorrenze: CAVALLI nei giorni
-  3, 28, 31 e GENNA nove giorni di fila (15–23) prima delle ferie. Non è
-  caricato come assenza. Il conto delle ore cambia a seconda che lo sia: −3,0%
-  sul contratto se sì, −4,7% se no. La domanda è annotata sulla scheda delle due
-  persone in `/lavoratori`, dove la vedrà chi può rispondere.
+Niente. Le tre voci aperte sono chiuse: le malattie del prospetto sono quelle
+già programmate e sono tutte caricate (BANDAOGO, RIZZO, SALVATORI, GUIDETTI,
+tutte entro il 9 agosto); CASALI è a 24 h come massimale; e `C` è **congedo
+parentale**.
 
-Chiuse invece due voci che erano aperte: le malattie del prospetto sono quelle
-già programmate e sono tutte caricate (4 righe: BANDAOGO, RIZZO, SALVATORI,
-GUIDETTI, tutte entro il 9 agosto); CASALI è a 24 h.
+`C` non era nella legenda del prospetto e non è stato dedotto: lo si è saputo
+chiedendo, dopo che due persone risultavano assenti per 12 giornate senza che
+nulla dicesse perché. Ha richiesto un valore nuovo nell'enum `tipo_assenza`,
+perché `permesso` sarebbe stato indistinguibile per il solver — che guarda solo
+se la giornata è occupata — e sbagliato per chi legge la griglia, che è la sola
+cosa per cui il campo esiste. La sigla mostrata è `C`, la stessa che usa il
+coordinatore: la griglia si legge come il suo prospetto.
+
+Restano tre codici non identificati, tutti marginali e segnalati dallo script:
+`CE` (una volta, DIMAS FERNANDES il 3 agosto) e `M`/`P` (11 volte, il
+tirocinante CARISI, che è disattivato e non entra nella copertura).
 
 ### Il passo che manca davvero
 

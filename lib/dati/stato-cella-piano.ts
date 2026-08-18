@@ -28,6 +28,9 @@ export const STATI_CELLA_LAVORATORE: ReadonlyArray<
   { tipo: "malattia", codice: "🤒", etichetta: "Malattia", assenza: true },
   { tipo: "disciplinare", codice: "D", etichetta: "Disciplinare", assenza: true },
   { tipo: "studio", codice: "📚", etichetta: "Permesso per studiare", assenza: true },
+  // `C` e' la sigla che il coordinatore usa gia' sui propri prospetti: la
+  // griglia si legge come la sua.
+  { tipo: "congedo", codice: "C", etichetta: "Congedo parentale", assenza: true },
   { tipo: "altro", codice: "A", etichetta: "Altro", assenza: true },
 ]
 

@@ -48,6 +48,7 @@ describe("stato delle celle senza assegnazione nella vista per lavoratore", () =
     [[assenza("malattia")], "🤒", "Malattia"],
     [[assenza("disciplinare")], "D", "Disciplinare"],
     [[assenza("studio")], "📚", "Permesso per studiare"],
+    [[assenza("congedo")], "C", "Congedo parentale"],
     [[assenza("altro")], "A", "Altro"],
   ] as const)("mostra %s come %s", (assenze, codice, etichetta) => {
     expect(

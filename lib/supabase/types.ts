@@ -6,6 +6,10 @@
 // due migrazioni che mancavano al remoto. Le voci di newsletter_subscriptions e
 // iscrivi_newsletter sono state ricopiate a mano dall'output di
 // generate_typescript_types: una rigenerazione completa le riprodurrà identiche.
+//
+// 18 agosto 2026: aggiunto a mano `congedo` a tipo_assenza, unica differenza
+// rispetto al remoto dopo 20260818000001_congedo_parentale.sql. Rigenerare
+// avrebbe cancellato questa intestazione per un valore solo.
 
 export type Json =
   | string
@@ -604,6 +608,7 @@ export type Database = {
         | "l104"
         | "formazione"
         | "altro"
+        | "congedo"
       tipo_giorno: "feriale" | "festivo"
     }
     CompositeTypes: { [_ in never]: never }
