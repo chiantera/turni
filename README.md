@@ -123,6 +123,7 @@ garantire copertura, monte ore o riposi, e non sarebbe riproducibile.
 │
 ├─ 🎬 scripts/
 │  ├─ verifica-produzione.sh              Smoke test sul sito in linea
+│  ├─ leggi-prospetto.py                  Legge il prospetto del coordinatore
 │  └─ demo-landing/                       Genera il video demo della landing
 │     ├─ fotogrammi.html                  Stato del fotogramma N via ?f=N
 │     └─ genera.sh                        Rende i fotogrammi, codifica l'mp4

@@ -422,6 +422,39 @@ also default to **sensitive**, meaning write-only: `vercel env pull` returns an
 empty string and you cannot verify what you set. Pass `--no-sensitive` for
 configuration that is not a secret, such as `AI_PROVIDER`.
 
+### A legend lists the codes, not the demand
+
+The coverage configuration was derived from the shift legend: every code names a
+distinct role, therefore one person per code per day. It typed clean, nothing
+contradicted it, and it was arithmetically self-consistent — 917 h/week
+demanded against 1026 available, 89.4% committed.
+
+Reading **one real month** disproved two of sixteen codes:
+
+| | deduced from the legend | measured over 31 days |
+|---|---|---|
+| `N` | 1/day → 77 h/week | **never appears**; the month uses only `N1` and `N2` |
+| `PRG` | 1/day → 42 h/week | **15 shifts in 31 days** → ~20 h/week |
+
+That is 99 h/week of demand no document supports — a tenth of the entire
+staff's contracted time. It was not harmless. A feasibility analysis built on
+it reported the service **mathematically infeasible** (−81 h, 109.7% committed)
+once three people took holiday at the same time, and the obvious reading of that
+number is "hire someone". The real figure is 745 against 1064: 70%.
+
+The tell was cheap and sitting in the data: **count how often each code
+occurs.** In a 31-day month the twelve day codes each appeared 30 to 32 times
+and the two nights exactly 31 — that is what a daily requirement looks like. A
+code appearing 15 times is not a daily requirement; one appearing zero times is
+not a requirement at all.
+
+Note what survived: for the other fourteen codes the deduction was *right*, and
+holds at 96.8% of cells. The lesson is not "deductions are wrong". It is that a
+legend is an inventory of what may happen, and a demand curve is a measurement
+of what does — and nothing warns you when you have silently used one as the
+other. Count occurrences over one real period first;
+`scripts/leggi-prospetto.py` does it from the coordinator's PDF.
+
 ### Public copy must survive contact with the code
 
 The landing page claimed "Nessuna terza parte" while `lib/ai/estrazione.ts`
@@ -527,6 +560,6 @@ When you complete a feature or fix:
 
 ---
 
-**Last updated:** 2026-08-14  
+**Last updated:** 2026-08-18  
 **Maintained by:** Claude Code + AI Agents  
 **Language:** Italian (UI/docs) + English (code)

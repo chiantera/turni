@@ -400,14 +400,12 @@ trova quindi lo schema ma non l'anagrafica — è voluto.
 - **18 sigle di turno**, con durate reali da 4,5 h a 11,5 h: `Ma Mb Mc Md Me Mf`
   e `MAP` al mattino, `Pa Pb Pc Pd Pe Pf` e `AP` al pomeriggio, `N1 N2 N` la
   notte, più `PRG`. `MAP` e `AP` appartengono a Il Bruco, il resto a Stradora.
-- **28 operatori**, 27 attivi più un tirocinante disattivato per non contarlo
+- **29 operatori**, 28 attivi più un tirocinante disattivato per non contarlo
   nella copertura. Solo cognome: inventare un nome di battesimo sarebbe stato
   peggio di lasciarlo vuoto. Le grafie non sono verificate.
-- **126 regole di copertura**: una persona per sigla, ogni giorno. Attenzione,
-  **non è letta dal prospetto di agosto**: deriva dalla legenda, dove ogni sigla
-  è un ruolo distinto. Regge la prova aritmetica — 917 h richieste a settimana
-  contro 1026 disponibili, 89,4% impegnato — ma va confrontata con la realtà in
-  `/copertura`.
+- **126 regole di copertura**, dedotte dalla legenda. Il prospetto di agosto le
+  ha poi smentite su due sigle: vedi «La copertura letta da un mese vero» qui
+  sotto. Il numero da citare è 745 h/settimana, non 917.
 
 ### Tre cose da chiarire col coordinatore
 
@@ -420,9 +418,61 @@ trova quindi lo schema ma non l'anagrafica — è voluto.
   (8:00–14:00). La legenda del prospetto però parla di «8:00–14:00 **o**
   14:00–20:00»: se la variante pomeridiana si usa, serve una seconda sigla.
 - **Tutti a 38 h settimanali** e tutti abilitati su entrambe le postazioni:
-  nessuno dei due dati era nei documenti. I part-time vanno corretti in
-  `/lavoratori`, e ora contano davvero — l'equità delle ore è misurata sullo
-  scarto dal contratto individuale.
+  nessuno dei due dati era nei documenti. Il prospetto di agosto ne ha
+  identificato uno solo — CASALI, all'88,5 h contro 151,92 — e resta da sapere
+  se sono 22 o 24 h. Conta davvero: l'equità delle ore è misurata sullo scarto
+  dal contratto individuale.
+
+## La copertura letta da un mese vero (18 agosto 2026)
+
+Il prospetto `Turni Stradora AGOSTO 2026.pdf` è il primo mese reale entrato nel
+progetto. Legge con `scripts/leggi-prospetto.py`, che mappa ogni cella alle
+coordinate della sua colonna: `pdftotext -layout` è leggibile a occhio ma perde
+le celle vuote, e una cella vuota qui è un dato.
+
+**La regola è confermata e ora è misurata**: una persona per sigla al giorno, su
+14 sigle. Su 434 celle ne deviano 14 (96,8% conformi), e si compensano a coppie
+— `PF` manca nei giorni 1, 7 e 20 e raddoppia nei giorni 12 e 15. Sono
+aggiustamenti a mano, non la regola.
+
+**Due sigle su sedici erano sbagliate**, ed è tutta domanda inventata:
+
+| | dedotto dalla legenda | misurato |
+|---|---|---|
+| `N` (notte 20:30–7:30) | 1/giorno → 77 h/sett | **mai usata**: agosto ha solo `N1` e `N2` |
+| `PRG` | 1/giorno → 42 h/sett | **15 turni in 31 giorni** → ~20 h/sett |
+
+843,5 − 77 − 21,7 = **744,8 h/settimana**, e la parte fissa (724,5) coincide col
+prospetto all'ora. Il Bruco è a parte: 73,5 h/settimana, anch'esse dedotte allo
+stesso modo e mai verificate, quindi **messe a zero** in attesa del suo
+prospetto. Alcuni operatori del pool ci lavorano davvero (DESANTIS), ma quelle
+ore non stanno in questo documento — e DESANTIS è già al 105% del contratto
+sulla sola Stradora.
+
+**Altro che il prospetto ha corretto:**
+
+- Mancava **un lavoratore intero**, DIMAS FERNANDES: 149 h su 23 turni, di fatto
+  full-time. Il cognome sta su due righe nel prospetto e potrebbe essere
+  nome+cognome.
+- **23 assenze** caricate in `absences` (130 gg di ferie, 23 di malattia, 7 di
+  formazione).
+- `SN` non è un turno: è la coda di `N1`/`N2`, ore già contate. Compare due
+  volte al giorno per 31 giorni, ed è giusto che non sia una regola di
+  copertura. `RD` è reperibilità diurna, non riposo domenicale.
+- Il **26 agosto è formazione per tutti**: chi aveva un turno ha `F5` come
+  annotazione, chi non l'aveva ce l'ha nella griglia.
+
+### Cosa resta aperto
+
+- **Le `UPDATE` sulla copertura non sono applicate.** Il classificatore le ha
+  bloccate; l'`INSERT` dei lavoratori e delle assenze è passato. Da eseguire:
+  `n_richiesti = 0` per `N` e `PRG` su Stradora e per `MAP` e `AP` su Il Bruco.
+- **`C` non è in legenda** — 12 occorrenze: CAVALLI nei giorni 3, 28, 31 e GENNA
+  nove giorni di fila (15–23) prima delle ferie. Il conto delle ore cambia a
+  seconda che sia un'assenza: −3,0% sul contratto se lo è, −4,7% se non lo è.
+- **Chi è malato adesso non è in questo file.** Il PDF è compilato il 31 luglio:
+  ogni `MAL` che contiene inizia il giorno 1 e finisce entro il 9. GUIDETTI ha
+  lavorato 3 giorni su 31, ed è il profilo più vicino a un'assenza lunga.
 
 ### Il ciclo di riferimento non si applica più
 
