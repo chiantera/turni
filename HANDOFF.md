@@ -449,6 +449,19 @@ prospetto. Alcuni operatori del pool ci lavorano davvero (DESANTIS), ma quelle
 ore non stanno in questo documento — e DESANTIS è già al 105% del contratto
 sulla sola Stradora.
 
+**Applicato e verificato il 18 agosto 2026.** `n_richiesti = 0` su `N` e `PRG`
+(Stradora) e su `MAP` e `AP` (Il Bruco): 28 righe. La domanda letta dal database
+è ora **724,5 h/settimana** contro 1064 di capacità, e coincide con la misura sul
+prospetto. Il conto si chiude fino all'ultima ora: 724,5 × 31/7 = 3208,5 h di
+copertura fissa mensile contro le 3250,5 h che il coordinatore ha assegnato, e
+le 42 h di differenza sono le sue **6 celle in più nette** (≈ 7 h l'una).
+
+Attenzione al 68% che ne esce: confronta la domanda con la capacità *piena*. Ad
+agosto c'erano 165 giorni di assenza su 868 persona-giorno, il 19% della forza:
+su quella base l'impegno reale era **84%**, e il personale ha infatti lavorato al
+97% del proprio contratto. Il margine esiste, ma un mese di ferie pesanti lo
+consuma quasi tutto.
+
 **Altro che il prospetto ha corretto:**
 
 - Mancava **un lavoratore intero**, DIMAS FERNANDES: 149 h su 23 turni, di fatto
@@ -464,9 +477,6 @@ sulla sola Stradora.
 
 ### Cosa resta aperto
 
-- **Le `UPDATE` sulla copertura non sono applicate.** Il classificatore le ha
-  bloccate; l'`INSERT` dei lavoratori e delle assenze è passato. Da eseguire:
-  `n_richiesti = 0` per `N` e `PRG` su Stradora e per `MAP` e `AP` su Il Bruco.
 - **`C` non è in legenda** — 12 occorrenze: CAVALLI nei giorni 3, 28, 31 e GENNA
   nove giorni di fila (15–23) prima delle ferie. Il conto delle ore cambia a
   seconda che sia un'assenza: −3,0% sul contratto se lo è, −4,7% se non lo è.
