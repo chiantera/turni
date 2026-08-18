@@ -226,10 +226,30 @@ that get ignored, which is how a check stops being a check.
 
 `list_migrations` reports only what was applied through the CLI or the MCP. It
 says nothing about the schema that actually exists — read `information_schema`
-for that. The two diverge in both directions: as of 2 August 2026 the remote
-holds three migrations whose SQL is nowhere in this repo
-(`copertura_festiva_esplicita`, `dati_dimostrativi`, `primo_utente_admin`), so
-**the repository cannot currently rebuild production from scratch.**
+for that. The two diverge in both directions. From 2 to 19 August 2026 the remote held
+three migrations whose SQL was nowhere in this repo, so the repository could
+not rebuild production from scratch. Two are now recovered and committed:
+
+- `copertura_festiva_esplicita` — read back out of
+  `supabase_migrations.schema_migrations`, where the full statement text is
+  kept. It is the migration that creates `coverage_giorno_coerente` and the
+  `nulls not distinct` unique index.
+- `primo_utente_admin` — reconstructed instead from the live definitions
+  (`pg_get_functiondef`, `pg_get_triggerdef`), which is the better source
+  anyway. Worth knowing what it fixes: `schema_iniziale.sql` creates an
+  **earlier** `handle_new_user()` with no bootstrap, so a repo rebuilt from
+  scratch produced a database whose first user is a `lavoratore`, where RLS
+  grants writes only to admin and pianificatore, and where nobody exists who
+  could promote anyone. Unusable on install.
+
+The third, `dati_dimostrativi`, is **deliberately not recovered.** It is the
+seed that created Marco Rossi, Luca Ferrari and the demo constraints — the
+junk being cleaned out of production. Replaying it on every rebuild would
+recreate exactly that. If demo data is ever wanted again it belongs in a seed
+script outside the migration chain, not inside it.
+
+So the ledger will always show one entry this repo does not have. That is the
+intended state, not drift; check this paragraph before "fixing" it.
 
 The other direction happened on 18 August 2026:
 `20260818000001_congedo_parentale.sql` is in this repo and applied to the
@@ -372,6 +392,25 @@ npm run build > /tmp/build.log 2>&1; echo "exit=$?"; tail -20 /tmp/build.log
 
 Conversely `grep -c` exits 1 when it finds nothing, which is often the desired
 result. Know whose exit code you are reading.
+
+### `tsc` and `vitest` do not resolve modules the same way
+
+`tsconfig.json` maps `@/*` to the project root. **Vitest does not read
+`tsconfig` paths.** So this compiles clean and then explodes at run time:
+
+```ts
+import { nomeCompleto } from "@/lib/solver/tipi"   // valore -> 5 file rossi
+import type { Tables } from "@/lib/supabase/types" // solo tipo -> innocuo
+```
+
+The distinction is why it stayed hidden: `lib/` was already full of `@/`
+imports, but every one of them was **type-only**, and those are erased before
+anything runs. The first value import through the alias took out five test
+files while `npm run typecheck` stayed at exit 0.
+
+Inside `lib/`, use relative paths. `vitest.config.ts` now also aliases `@` as
+a safety net, but the net is not the rule — a green typecheck says nothing
+about whether the module will be found.
 
 ### A skipped test is the same colour as a passing one
 

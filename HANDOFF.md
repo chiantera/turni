@@ -635,6 +635,82 @@ sotto. Le due asserzioni aggiunte a `e2e/autenticato.spec.ts` — che la
 dashboard porti il menu e la guida — sono una specifica finché quel job resta
 grigio.
 
+## Il solver riproduce agosto (19 agosto 2026)
+
+Non era mai stato provato su dati veri. Ora sì, e **quadra col prospetto fatto
+a mano**.
+
+| | ore |
+|---|---|
+| Domanda Stradora (724,5 h/sett × 31/7) | 3208,5 |
+| Assegnate dal solver su Stradora | 3186,5 |
+| Assegnate a mano dal coordinatore | 3250,5 |
+
+Le 64 ore di differenza si scompongono per intero in due pezzi noti: **22 h**
+sono le due notti `N1` scoperte del 17 e 21 agosto — le uniche due violazioni
+bloccanti, 11 h l'una — e **42 h** sono i raddoppi che il coordinatore aveva
+fatto a mano e che il solver, correttamente, non si è inventato.
+
+Ottobre è il piano pulito: 3439,5 h = 3208,5 (Stradora) + 231 (Bruco, 22
+giorni feriali × 10,5 h). Nessuna scopertura.
+
+Settembre invece è **antecedente al Bruco** e non lo contiene affatto (0 celle
+`MAP`/`AP`): va rigenerato, non letto.
+
+Nota metodologica: le assenze in archivio sono tutte di agosto. Settembre e
+ottobre sono stati generati con nessuno mai in ferie, ed è anche per questo che
+escono così puliti.
+
+## Le abilitazioni sono la prossima cosa che conta
+
+29 lavoratori × 2 postazioni = 58 righe, tutte a `livello 1`. **Chiunque può
+fare qualunque cosa**, e questo è l'unico posto dove si scrive chi lavora dove.
+
+Cosa produce, misurato sul piano di ottobre: il solver ha mandato al Bruco
+**18 persone diverse**, da 1 a 6 turni ciascuna, e a **DESANTIS — l'unica
+persona che sappiamo lavorarci davvero — zero turni**. Il piano è
+aritmeticamente perfetto e operativamente sbagliato.
+
+Non è un difetto del solver: sta facendo esattamente ciò che gli è stato detto.
+È la stessa forma dell'errore di `N` e `PRG` — coerente coi numeri, scollegato
+dalla realtà — e come allora la cura è un'informazione che ha solo il
+coordinatore.
+
+`turni_dati/abilitazioni.html` è stato rigenerato con i 28 nominativi in
+servizio (prima erano 27, senza DIMAS FERNANDES) e ora fa **due** domande: chi
+lavora al Bruco, e chi può coprire i turni di responsabilità. Provato nel
+browser: spunte, contatore e pulsante di copia funzionano.
+
+C'è anche un limite di modello sotto: le abilitazioni sono per **postazione**,
+mentre il vincolo reale è per **turno** (`Ma`, `Pa`, `N2`, `Mc`/`Pc`). Con 2
+postazioni e 18 turni la granularità non basta. È una migrazione, e va fatta
+solo se la risposta del coordinatore la richiede davvero.
+
+## Il repository può di nuovo ricostruire la produzione
+
+Due delle tre migrazioni che esistevano solo nel registro remoto sono
+recuperate e committate — `copertura_festiva_esplicita` (letta dal registro) e
+`primo_utente_admin` (ricostruita dallo schema vivo). La terza,
+`dati_dimostrativi`, resta fuori di proposito: è il seed che ha creato Marco
+Rossi e i vincoli demo. I dettagli e il perché stanno in `AGENTS.md`.
+
+`20260819000001_revoca_esecuzione_trigger.sql` è nuova e **non ancora
+applicata**: toglie `handle_new_user()` dagli endpoint RPC pubblici, dove non
+è mai stata destinata a stare.
+
+## Pulizia dei dati: bloccata, resta a te
+
+Le tre cancellazioni sono state verificate riga per riga ma il classificatore
+ha rifiutato la `delete` via MCP. Il comando esatto è in fondo a questo
+documento, sotto «Da eseguire a mano».
+
+Riguarda: il piano per il **12–31 agosto 2027** (anno sbagliato, 280
+assegnazioni), i **tre vincoli dimostrativi** — tutti già disattivi, tutti
+riferiti a lavoratori inesistenti, uno con dentro il testo di prova
+`"quel falso invalido del Ferrari non po fa le notti dio bono"` — e le **due
+violazioni fantasma** «Marco Rossi non lavora la domenica pomeriggio», che
+compaiono con gravità *bloccante* su piani veri.
+
 ## What's TODO (Non-Blocking)
 
 ### 🔴 Account per i test autenticati — *l'unico che spegne un controllo*
@@ -778,6 +854,74 @@ Before considering this "done":
 - **Analytics:** Currently not tracked — recommend adding if you care about landing page conversion rate
 
 ---
+
+## Da eseguire a mano
+
+Tre cose che non ho potuto fare io. In ordine di valore.
+
+### 1 · L'account per i test autenticati — *l'unico che riaccende una spia*
+
+`/home`, `/pianificazione`, `/riepilogo` e `/festivita` non sono verificate da
+nessuno. Il job `autenticato` è grigio-skipped (correttamente: non finge di
+essere verde), e aspetta solo due secret.
+
+Creare un utente di sola lettura non lo posso fare io — creare account è fuori
+da ciò che mi è consentito. Da fare su
+[Supabase → Authentication → Users](https://supabase.com/dashboard/project/uxwmletpnmsbvdyxktln/auth/users):
+
+1. «Add user» → email dedicata, password generata, «Auto Confirm User».
+2. Lasciargli il ruolo `lavoratore` che riceve di default: il test deve
+   passare da dove passa l'utente meno privilegiato.
+3. Poi i due secret:
+
+```bash
+gh secret set SMOKE_EMAIL    --body "<email>"
+gh secret set SMOKE_PASSWORD --body "<password>"
+gh workflow run verifica-produzione.yml
+```
+
+Il job deve passare da **skipped** a **success** e i 7 test devono girare
+davvero. Il modo di controllarlo è la durata, non l'esito — un passo che
+dovrebbe metterci 30 s e ne mette 1 sta saltando tutto:
+
+```bash
+gh api repos/chiantera/turni/actions/runs/$ID/jobs \
+  --jq '.jobs[].steps[] | "\(.name) \(.started_at) \(.completed_at)"'
+```
+
+### 2 · La pulizia dei dati
+
+Verificata riga per riga, rifiutata dal classificatore. Da incollare
+nell'[SQL editor](https://supabase.com/dashboard/project/uxwmletpnmsbvdyxktln/sql/new):
+
+```sql
+begin;
+
+-- «Marco Rossi non lavora la domenica pomeriggio»: gravita' bloccante su un
+-- vincolo che non esiste piu' e una persona che non e' mai esistita.
+delete from violations where tipo = 'vincolo_non_supportato';
+
+-- I tre vincoli dimostrativi: gia' disattivi, riferiti a lavoratori inesistenti.
+delete from constraints
+ where id in ('2549ac27-f1b6-46aa-bd6a-c6e619a04a22',
+              'a79000a7-abfb-45f1-9a30-0b5976f62ec0',
+              'be9e218d-732f-48b1-a810-54c72b28007c');
+
+-- Il piano dell'anno sbagliato. CASCADE porta via schedules e 280 assegnazioni.
+delete from planning_runs where dal = '2027-08-12' and al = '2027-08-31';
+
+commit;
+```
+
+Restano in piedi agosto 2026 (v3) e ottobre 2026, che sono i due piani buoni.
+Settembre resta ma è da rigenerare: non contiene Il Bruco.
+
+### 3 · La migrazione nuova
+
+`20260819000001_revoca_esecuzione_trigger.sql` è committata e non applicata.
+Va eseguita con `apply_migration` (non `execute_sql`) così il registro la
+conosce — l'errore già fatto con `congedo_parentale`, che risulterà «pending»
+per sempre.
 
 ## Questions?
 
