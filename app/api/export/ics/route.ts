@@ -7,6 +7,7 @@ import {
 } from "@/lib/dati/intervallo"
 import { oraInMinuti, pezziData } from "@/lib/solver/tempo"
 import { creaClientServer, utenteCorrente } from "@/lib/supabase/server"
+import { nomeCompleto } from "@/lib/solver/tipi"
 
 export const runtime = "nodejs"
 
@@ -104,7 +105,7 @@ export async function GET(req: Request) {
       start: [anno, m, g, Math.floor(inizioMin / 60), inizioMin % 60],
       duration: { minutes: t.durata_min },
       productId: "turni",
-      calName: `Turni ${lavoratore.data ? `${lavoratore.data.nome} ${lavoratore.data.cognome}` : ""}`.trim(),
+      calName: `Turni ${lavoratore.data ? nomeCompleto(lavoratore.data) : ""}`.trim(),
     })
   }
 

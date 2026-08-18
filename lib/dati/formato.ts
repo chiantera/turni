@@ -100,3 +100,8 @@ export function ore(n: number): string {
   const arrotondato = Math.round(n * 10) / 10
   return `${arrotondato.toString().replace(".", ",")} h`
 }
+
+// `nomeCompleto` vive in `lib/solver/tipi.ts`, accanto al tipo che descrive:
+// il solver non importa niente da qui e non deve iniziare adesso. Riesportato
+// perche' le pagine importano il resto dei formati da questo modulo.
+export { nomeCompleto, unisciNomi } from "../solver/tipi"

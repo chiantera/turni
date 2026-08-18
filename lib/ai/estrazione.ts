@@ -24,6 +24,7 @@ import {
   type VincoloEstratto,
 } from "./dsl"
 import { ottieniModello, type OpzioniModello } from "./provider"
+import { nomeCompleto } from "../solver/tipi"
 
 export interface ContestoEstrazione {
   lavoratori: { id: string; nome: string; cognome: string }[]
@@ -63,7 +64,7 @@ export interface EsitoEstrazione {
 
 function costruisciPrompt(ctx: ContestoEstrazione): string {
   const lav = ctx.lavoratori
-    .map((l) => `  - ${l.nome} ${l.cognome}`)
+    .map((l) => `  - ${nomeCompleto(l)}`)
     .join("\n")
   const post = ctx.postazioni.map((p) => `  - ${p.nome}`).join("\n")
   const turni = ctx.turni.map((t) => `  - ${t.codice} = ${t.nome}`).join("\n")
@@ -186,7 +187,7 @@ function risolviVincolo(v: VincoloEstratto, ctx: ContestoEstrazione): VincoloPro
 
   const candLav: Candidato[] = ctx.lavoratori.map((l) => ({
     id: l.id,
-    etichetta: `${l.nome} ${l.cognome}`,
+    etichetta: nomeCompleto(l),
   }))
   const candPost: Candidato[] = ctx.postazioni.map((p) => ({
     id: p.id,

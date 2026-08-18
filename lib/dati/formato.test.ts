@@ -4,6 +4,7 @@ import {
   MESI_BREVI,
   annoDiMese,
   mesiDellAnno,
+  nomeCompleto,
   percorsoPianificazioneCorrente,
 } from "./formato"
 
@@ -45,5 +46,23 @@ describe("calendario per anno", () => {
     expect(MESI_BREVI[0]).toBe("gen")
     expect(MESI_BREVI[7]).toBe("ago")
     expect(MESI_BREVI[11]).toBe("dic")
+  })
+})
+
+describe("nome completo", () => {
+  it("unisce nome e cognome", () => {
+    expect(nomeCompleto({ nome: "Marco", cognome: "Rossi" })).toBe("Marco Rossi")
+  })
+
+  it("non lascia spazi quando manca il nome di battesimo", () => {
+    // I 29 lavoratori reali arrivano da un prospetto di soli cognomi.
+    expect(nomeCompleto({ nome: "", cognome: "ABID" })).toBe("ABID")
+    expect(nomeCompleto({ nome: null, cognome: "CASALI" })).toBe("CASALI")
+    expect(nomeCompleto({ nome: "  ", cognome: "DESANTIS" })).toBe("DESANTIS")
+  })
+
+  it("regge anche il caso opposto e quello vuoto", () => {
+    expect(nomeCompleto({ nome: "Marco", cognome: "" })).toBe("Marco")
+    expect(nomeCompleto({ nome: "", cognome: "" })).toBe("")
   })
 })

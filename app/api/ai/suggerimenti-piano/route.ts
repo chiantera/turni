@@ -17,6 +17,7 @@ import {
 import { caricaDatiSolver } from "@/lib/dati/piano"
 import { serializzaDatiPerImpronta } from "@/lib/solver/serializzazione"
 import { creaClientServer, ePianificatore } from "@/lib/supabase/server"
+import { nomeCompleto } from "@/lib/solver/tipi"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -150,7 +151,7 @@ export async function POST(req: Request) {
       })),
       lavoratori: dati.lavoratori.map((l) => ({
         id: l.id,
-        nome: `${l.nome} ${l.cognome}`,
+        nome: nomeCompleto(l),
         oreSettimanali: l.ore_settimanali,
         postazioni: abilitazioniPerLavoratore.get(l.id) ?? [],
       })),

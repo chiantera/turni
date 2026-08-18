@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 
 import { etichettaIntervallo } from "./intervallo"
 import type { Database, Tables } from "@/lib/supabase/types"
+import { unisciNomi } from "../solver/tipi"
 
 type Client = SupabaseClient<Database>
 
@@ -50,7 +51,7 @@ export function componiAttivita(
     })),
     ...fonti.lavoratori.map((l) => ({
       id: `lavoratore:${l.id}`,
-      descrizione: `Lavoratore «${l.cognome} ${l.nome}» aggiunto`,
+      descrizione: `Lavoratore «${unisciNomi(l.cognome, l.nome)}» aggiunto`,
       quando: l.creato_il,
       tipo: "lavoratore" as const,
     })),

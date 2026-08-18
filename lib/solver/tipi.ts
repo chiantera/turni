@@ -204,3 +204,32 @@ export interface Risultato {
   iterazioni: number
   tempoMs: number
 }
+
+/**
+ * Il nome di una persona, senza spazi spuri quando una meta' manca.
+ *
+ * L'anagrafe reale di Stradora viene da un prospetto che porta solo i
+ * cognomi: `nome` e' la stringa vuota per tutti e 29. Otto punti del codice
+ * componevano `${nome} ${cognome}` a mano, e ognuno lasciava uno spazio di
+ * troppo — in produzione si legge « ABID: 140h 30m...» in una violazione e
+ * «Lavoratore «CASALI » aggiunto» nella cronologia.
+ *
+ * I nomi mancanti non si inventano: si formattano.
+ */
+export function nomeCompleto(persona: {
+  nome?: string | null
+  cognome?: string | null
+}): string {
+  return unisciNomi(persona.nome, persona.cognome)
+}
+
+/**
+ * Come sopra, ma con l'ordine deciso da chi chiama: gli elenchi del personale
+ * scrivono il cognome per primo, il resto dell'interfaccia no.
+ */
+export function unisciNomi(...parti: (string | null | undefined)[]): string {
+  return parti
+    .map((parte) => parte?.trim() ?? "")
+    .filter((parte) => parte.length > 0)
+    .join(" ")
+}

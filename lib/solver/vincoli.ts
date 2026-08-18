@@ -14,6 +14,7 @@
  */
 
 import { formattaOre } from "./tempo"
+import { nomeCompleto } from "./tipi"
 import type { Modello, Stato, Violazione } from "./tipi"
 
 export const MIN_IN_H = 60
@@ -1070,7 +1071,7 @@ export function trovaViolazioni(
   // --- Riposi e serie (le assegnazioni bloccate a mano possono violare) ----
   for (let l = 0; l < m.lavoratori.length; l++) {
     const L = m.lavoratori[l]
-    const nome = `${L.nome} ${L.cognome}`
+    const nome = nomeCompleto(L)
     const base = l * nG
 
     let serie = 0
@@ -1131,7 +1132,7 @@ export function trovaViolazioni(
     const ore = orePerSettimana(m, s, l)
     for (let settimana = 0; settimana < ore.length; settimana++) {
       if (ore[settimana] <= m.regole.maxOreSettimana + 1e-9) continue
-      const nome = `${m.lavoratori[l].nome} ${m.lavoratori[l].cognome}`
+      const nome = nomeCompleto(m.lavoratori[l])
       const primoGiorno = m.settimanaDi.findIndex((indice) => indice === settimana)
       const settimanaDal = primoGiorno >= 0 ? m.date[primoGiorno] : "sconosciuta"
       out.push({
@@ -1226,7 +1227,7 @@ export function riepiloghi(m: Modello, s: Stato, c: VincoliCompilati) {
 
     out.push({
       lavoratoreIdx: l,
-      nome: `${L.nome} ${L.cognome}`,
+      nome: nomeCompleto(L),
       oreTotali: minuti / 60,
       oreTarget: (oreSett * giorniPeriodo) / 7,
       turniPerCodice: perCodice,
