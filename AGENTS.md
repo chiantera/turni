@@ -130,8 +130,12 @@ but run it by hand too when you touch the landing page or the middleware.
 - **Use Vitest** (`npm test`) — framework is Vitest
 - **Integration tests** — for complex logic (solver, AI extraction)
 - **Unit tests** — for utility functions (formatDate, validateCoverage)
-- **No E2E tests yet.** `scripts/verifica-produzione.sh` covers what a browser
-  test would catch from outside: status codes, assets, content invariants.
+- **Two levels above the unit tests.** `scripts/verifica-produzione.sh` checks
+  what is visible from outside — status codes, assets, content invariants.
+  `e2e/autenticato.spec.ts` (Playwright) checks what only exists behind a
+  login, and is the only place that can catch a broken path *between* pages.
+  It is grey-skipped until `SMOKE_EMAIL`/`SMOKE_PASSWORD` exist, so anything
+  asserted there is a specification until then — see the trap below.
 - Test file naming: `*.test.ts` or `*.itest.ts` (integration)
 
 ### Updating Documentation
@@ -321,6 +325,34 @@ endpoint must be added to the allowlist explicitly — "public route" is easy to
 read as "page you visit" and forget that it also means "endpoint you call".
 Static assets need their **file extension** in the matcher exclusion list;
 `mp4` was missing, so no video could ever be served.
+
+### A reachable page is not a page you can leave
+
+`/home` is where the middleware sends everyone after login. It was the only
+page in the app without `<Navigazione />` — nine pages mounted it themselves,
+the landing pad did not. From there nothing else was reachable: not
+`/lavoratori`, not `/copertura`, not `/riepilogo`, not even "Esci". Typecheck,
+lint, 197 tests and the build were all green. A beta tester opened the app,
+arrived at the dashboard, and stopped.
+
+The cause was structural, not an oversight in the copy: navigation was a
+per-page import instead of a property of the route group, so "remember to add
+the nav" was something you could forget exactly once — on the page that
+mattered most. It now lives in `app/(authenticated)/layout.tsx`, where the
+group's shell belongs.
+
+The same layout also opened a second `<html>`/`<body>` inside the root
+layout's. Invalid HTML, and a hardcoded `bg-gray-50` that cut `/home` out of
+the theme tokens and out of dark mode entirely. **Only the root layout gets
+`<html>` and `<body>`**; a route-group layout that renders them is always a
+bug, and the symptom is a page that looks like a different product.
+
+Nothing automated in this repo can see a dead end. Route coverage is not
+coverage of the paths between routes. When you add a page, the question is not
+"does it render" but "how does someone reach it, and how do they get out".
+`e2e/autenticato.spec.ts` now asserts the dashboard carries the menu — though
+that job is grey-skipped until `SMOKE_EMAIL` exists, so the assertion is a
+specification, not yet a check.
 
 ### Do not duplicate RLS in TypeScript
 
@@ -596,6 +628,6 @@ When you complete a feature or fix:
 
 ---
 
-**Last updated:** 2026-08-18  
+**Last updated:** 2026-08-19  
 **Maintained by:** Claude Code + AI Agents  
 **Language:** Italian (UI/docs) + English (code)

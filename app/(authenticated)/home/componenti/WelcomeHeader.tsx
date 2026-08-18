@@ -4,12 +4,13 @@ interface WelcomeHeaderProps {
 
 export default function WelcomeHeader({ userName }: WelcomeHeaderProps) {
   return (
-    <div className="mb-8">
-      <h1 className="text-3xl font-bold text-gray-900">
-        Bentornato, {userName}! 👋
+    <div className="mb-6">
+      <h1 className="text-2xl font-semibold sm:text-3xl">
+        Bentornato, {userName}
       </h1>
-      <p className="text-gray-600 mt-2">
-        Gestisci i tuoi turni e visualizza i progressi
+      <p className="mt-1 text-tenue">
+        Turni distribuisce n lavoratori su m postazioni rispettando contratti,
+        riposi e assenze.
       </p>
     </div>
   )

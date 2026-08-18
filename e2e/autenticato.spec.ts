@@ -48,6 +48,33 @@ test("la dashboard si apre e mostra le sue tre parti", async ({ page }) => {
   await expect(page.getByText(/lavoratori attivi/i)).toBeVisible()
 })
 
+test("la dashboard ha il menu, come ogni altra pagina", async ({ page }) => {
+  // 19 agosto 2026: `/home` era l'unica pagina dell'app senza `<Navigazione />`.
+  // Nove pagine lo montavano da sé, la pagina di atterraggio dopo l'accesso no,
+  // e da lì non si raggiungeva niente — non Lavoratori, non Copertura, non
+  // Riepilogo, nemmeno «Esci» — se non digitando gli indirizzi a mano. Test
+  // verdi, build verde, e un beta tester che si è perso.
+  await page.goto("/home")
+  await expect(page.getByRole("button", { name: /esci/i })).toBeVisible()
+  await expect(page.getByRole("link", { name: /^pianifica$/i })).toBeVisible()
+
+  // Il menu è un <details> nell'intestazione: chiuso non elenca niente.
+  await page.locator("header summary").click()
+  await expect(page.getByRole("link", { name: /^copertura$/i })).toBeVisible()
+})
+
+test("la dashboard dice da dove si comincia", async ({ page }) => {
+  // La guida legge lo stato reale: se l'installazione è configurata dice
+  // «Configurazione completa», altrimenti elenca cosa manca. Una delle due
+  // intestazioni dev'esserci sempre — se non c'è, la guida non ha renderizzato.
+  await page.goto("/home")
+  await expect(
+    page.getByRole("heading", {
+      name: /da dove si comincia|configurazione completa/i,
+    }),
+  ).toBeVisible()
+})
+
 test("le azioni rapide portano a pagine che esistono", async ({ page }) => {
   await page.goto("/home")
   const azione = page.getByRole("link", { name: /pianifica questo mese/i })

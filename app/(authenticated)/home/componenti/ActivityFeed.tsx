@@ -9,6 +9,12 @@ interface ActivityFeedProps {
   activities: Activity[]
 }
 
+const ETICHETTA_TIPO: Record<Activity["type"], string> = {
+  plan: "Piano",
+  worker: "Lavoratore",
+  position: "Postazione",
+}
+
 export default function ActivityFeed({ activities }: ActivityFeedProps) {
   const formatDate = (date: Date) => {
     const now = new Date()
@@ -22,32 +28,33 @@ export default function ActivityFeed({ activities }: ActivityFeedProps) {
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">
-        Attività recente
-      </h2>
-      <div className="space-y-4">
+    <div className="scheda p-4 sm:p-6">
+      <h2 className="text-lg font-semibold">Attività recente</h2>
+      <p className="mt-1 text-sm text-tenue">
+        Non esiste un registro delle modifiche: qui si vede quando qualcosa è
+        stato creato o aggiornato, non quante volte né da chi.
+      </p>
+      <div className="mt-4 space-y-3">
         {activities.length > 0 ? (
           activities.map((activity) => (
             <div
               key={activity.id}
-              className="flex gap-4 pb-4 border-b last:border-b-0"
+              className="flex flex-wrap items-baseline gap-x-3 border-b border-bordo pb-3 last:border-b-0 last:pb-0"
             >
-              <div className="text-2xl flex-shrink-0">
-                {activity.type === "plan"
-                  ? "📋"
-                  : activity.type === "worker"
-                    ? "👤"
-                    : "📍"}
-              </div>
-              <div className="flex-1">
-                <p className="text-gray-900 font-medium">{activity.description}</p>
-                <p className="text-gray-500 text-sm">{formatDate(activity.timestamp)}</p>
-              </div>
+              <span className="rounded-full bg-accento-tenue px-2 py-0.5 text-xs text-accento">
+                {ETICHETTA_TIPO[activity.type]}
+              </span>
+              <p className="flex-1 text-sm">{activity.description}</p>
+              <p className="text-sm text-tenue">
+                {formatDate(activity.timestamp)}
+              </p>
             </div>
           ))
         ) : (
-          <p className="text-gray-500 text-center py-8">Nessuna attività recente</p>
+          <p className="py-4 text-sm text-tenue">
+            Nessuna attività recente. Comparirà qui appena aggiungi un
+            lavoratore, una postazione o generi un piano.
+          </p>
         )}
       </div>
     </div>

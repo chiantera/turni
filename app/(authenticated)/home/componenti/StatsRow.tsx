@@ -13,30 +13,27 @@ export default function StatsRow({
     {
       label: "Piani questo mese",
       value: plansThisMonth,
-      icon: "📋",
+      nota: "Versioni che coprono il mese in corso",
     },
     {
       label: "Ore questo mese",
       value: hoursThisMonth,
-      icon: "⏱️",
+      nota: "Contabilizzate nel piano più recente",
     },
     {
       label: "Lavoratori attivi",
       value: workersActive,
-      icon: "👥",
+      nota: "Chi può ricevere turni",
     },
   ]
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-      {stats.map((stat, idx) => (
-        <div
-          key={idx}
-          className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm"
-        >
-          <div className="text-3xl mb-2">{stat.icon}</div>
-          <p className="text-gray-600 text-sm font-medium">{stat.label}</p>
-          <p className="text-3xl font-bold text-gray-900 mt-2">{stat.value}</p>
+    <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      {stats.map((stat) => (
+        <div key={stat.label} className="scheda p-4">
+          <p className="text-sm font-medium text-tenue">{stat.label}</p>
+          <p className="mt-1 text-3xl font-semibold">{stat.value}</p>
+          <p className="mt-1 text-xs text-tenue">{stat.nota}</p>
         </div>
       ))}
     </div>

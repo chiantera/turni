@@ -11,24 +11,26 @@ export default function QuickActions({
   nextMonthHref,
 }: QuickActionsProps) {
   const actions = [
-    { label: "Pianifica questo mese", href: currentMonthHref, icon: "📅" },
-    { label: "Pianifica il mese prossimo", href: nextMonthHref, icon: "✨" },
-    { label: "Gestisci lavoratori", href: "/lavoratori", icon: "👥" },
-    { label: "Gestisci postazioni", href: "/postazioni", icon: "🏢" },
+    { label: "Pianifica questo mese", href: currentMonthHref },
+    { label: "Pianifica il mese prossimo", href: nextMonthHref },
+    { label: "Riepilogo ore", href: "/riepilogo" },
+    { label: "Gestisci lavoratori", href: "/lavoratori" },
   ]
 
   return (
-    <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm mb-8">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Azioni rapide</h2>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div className="scheda mb-8 p-4 sm:p-6">
+      <h2 className="text-lg font-semibold">Azioni rapide</h2>
+      <p className="mt-1 text-sm text-tenue">
+        Le stesse pagine sono sempre raggiungibili dal menu in alto.
+      </p>
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {actions.map((action) => (
           <Link
             key={action.href}
             href={action.href}
-            className="p-4 text-center rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors"
+            className="rounded-lg border border-bordo p-3 text-sm font-medium hover:border-accento hover:bg-accento-tenue"
           >
-            <div className="text-3xl mb-2">{action.icon}</div>
-            <p className="font-medium text-gray-900 text-sm">{action.label}</p>
+            {action.label}
           </Link>
         ))}
       </div>

@@ -1,8 +1,11 @@
 import { attivitaRecenti, type TipoAttivita } from "@/lib/dati/attivita"
 import { meseCorrente, spostaMese } from "@/lib/dati/formato"
+import { leggiStatoConfigurazione, primiPassi } from "@/lib/dati/primi-passi"
 import { statisticheDashboard } from "@/lib/dati/statistiche"
 import { creaClientServer, utenteCorrente } from "@/lib/supabase/server"
 import WelcomeHeader from "./componenti/WelcomeHeader"
+import ComeFunziona from "./componenti/ComeFunziona"
+import PrimiPassi from "./componenti/PrimiPassi"
 import StatsRow from "./componenti/StatsRow"
 import QuickActions from "./componenti/QuickActions"
 import ActivityFeed from "./componenti/ActivityFeed"
@@ -25,9 +28,10 @@ export default async function DashboardPage() {
   const userName = corrente?.profilo?.nome || "Utente"
 
   const mese = meseCorrente()
-  const [stats, attivita] = await Promise.all([
+  const [stats, attivita, configurazione] = await Promise.all([
     statisticheDashboard(supabase),
     attivitaRecenti(supabase),
+    leggiStatoConfigurazione(supabase),
   ])
 
   const recentActivities = attivita.map((voce) => ({
@@ -38,8 +42,10 @@ export default async function DashboardPage() {
   }))
 
   return (
-    <div className="p-8">
+    <main className="mx-auto w-full max-w-5xl flex-1 p-4 sm:p-6">
       <WelcomeHeader userName={userName} />
+      <ComeFunziona />
+      <PrimiPassi passi={primiPassi(configurazione)} />
       <StatsRow
         plansThisMonth={stats.pianiMese}
         hoursThisMonth={stats.oreMese}
@@ -50,6 +56,6 @@ export default async function DashboardPage() {
         nextMonthHref={`/pianificazione/${spostaMese(mese, 1)}`}
       />
       <ActivityFeed activities={recentActivities} />
-    </div>
+    </main>
   )
 }

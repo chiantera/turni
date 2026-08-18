@@ -583,6 +583,58 @@ locale. Funziona, ma il piano non avrà la rotazione canonica M→P→N, e la pa
 del README che la descrive ora vale per il caso teorico, non per questo
 servizio.
 
+## La dashboard era un vicolo cieco (19 agosto 2026)
+
+Un beta tester ha aperto l'app, è arrivato alla home e si è fermato. La
+diagnosi non era «manca una spiegazione»: **`/home` era l'unica pagina
+dell'app senza menu.** Nove pagine montano `<Navigazione />` da sé, la pagina
+di atterraggio dopo l'accesso no. Da lì non si raggiungeva Lavoratori, né
+Copertura, né Riepilogo, né «Esci» — solo quattro scorciatoie e un elenco di
+attività vuoto.
+
+Lo stesso layout apriva anche un secondo `<html>`/`<body>` dentro quelli del
+layout radice, con un `bg-gray-50` fisso: `/home` restava fuori dai token del
+tema e dal tema scuro, e sembrava un altro prodotto.
+
+### Cosa c'è ora
+
+- **La navigazione**, spostata in `app/(authenticated)/layout.tsx`. È
+  proprietà del gruppo di rotte, non qualcosa da ricordarsi pagina per pagina
+  — che è il motivo per cui la dimenticanza è stata possibile una volta sola,
+  proprio dove pesava di più.
+- **«Come funziona»**, tre frasi su cosa fa Turni. Dicono anche dove sta
+  l'assistente: su `/vincoli`, non nella pagina del piano. Chi cerca «l'AI»
+  dove c'è la griglia non la trova, e finora niente glielo diceva.
+- **«Da dove si comincia»**, i cinque passi che separano un'installazione
+  vuota dal primo piano, ognuno con accanto lo stato reale.
+
+### Lo stato è misurato, non memorizzato
+
+`lib/dati/primi-passi.ts` interroga il database a ogni render invece di
+leggere un flag di onboarding. Un flag si scrive una volta e poi mente: il
+giorno in cui qualcuno disattiva l'ultimo lavoratore continuerebbe a dire
+«tutto a posto». È la stessa lezione già pagata due volte qui — il registro
+delle migrazioni che non è lo schema, la legenda che non è la domanda.
+
+Il passo sulle **abilitazioni** è quello che vale il prezzo del biglietto: un
+lavoratore che non copre nessuna postazione è invisibile al solver, e il piano
+esce scoperto senza dire perché. Ora lo dice prima.
+
+La guida si apre da sola finché manca qualcosa e si richiude a configurazione
+completa, senza preferenze da salvare: lo stato è già la risposta.
+
+### Cosa è verificato e cosa no
+
+Verificato: typecheck e build a 0, 197 test verdi (9 nuovi su `primi-passi`),
+e i componenti **guardati davvero** nel browser nei tre stati — vuoto, a metà,
+completo — tramite una pagina di anteprima temporanea, poi rimossa. Nessun
+errore in console, nessun avviso di idratazione.
+
+Non verificato: `/home` reale con una sessione. Serve l'account di test qui
+sotto. Le due asserzioni aggiunte a `e2e/autenticato.spec.ts` — che la
+dashboard porti il menu e la guida — sono una specifica finché quel job resta
+grigio.
+
 ## What's TODO (Non-Blocking)
 
 ### 🔴 Account per i test autenticati — *l'unico che spegne un controllo*

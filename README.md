@@ -78,11 +78,13 @@ garantire copertura, monte ore o riposi, e non sarebbe riproducibile.
 │  │     └─ Footer.tsx                    Dark footer
 │  │
 │  ├─ 🔐 (authenticated)/                Dashboard autenticato (post-login)
-│  │  ├─ layout.tsx                       Layout con auth guard
+│  │  ├─ layout.tsx                       Auth guard e navigazione
 │  │  └─ home/
 │  │     ├─ page.tsx                      Dashboard hub
 │  │     └─ componenti/
 │  │        ├─ WelcomeHeader.tsx          Greeting personalizzato
+│  │        ├─ ComeFunziona.tsx           Cosa fa Turni, in tre frasi
+│  │        ├─ PrimiPassi.tsx             Guida alla configurazione
 │  │        ├─ StatsRow.tsx               3-KPI stat grid
 │  │        ├─ QuickActions.tsx           4 scorciatoie feature
 │  │        └─ ActivityFeed.tsx           Timeline attività recente
@@ -108,6 +110,7 @@ garantire copertura, monte ore o riposi, e non sarebbe riproducibile.
 │  ├─ 🤖 ai/                              Claude API, DSL, estrazione, suggerimenti
 │  ├─ 📊 dati/                            Formattazione, intervalli, piano
 │  │  ├─ statistiche.ts                   KPI dashboard (piani, ore, lavoratori)
+│  │  ├─ primi-passi.ts                   Stato della configurazione, misurato
 │  │  ├─ attivita.ts                      Cronologia dai timestamp di riga
 │  │  └─ newsletter.ts                    Normalizzazione indirizzi email
 │  ├─ 🔧 solver/                          Ciclico, greedy, ricerca, fattibilità
