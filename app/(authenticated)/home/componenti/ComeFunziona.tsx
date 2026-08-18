@@ -16,7 +16,7 @@ const PUNTI = [
       <>
         «Rossi non fa notti a settembre», scritto in italiano.{" "}
         <Link href="/vincoli" className="underline">
-          L'assistente
+          L&apos;assistente
         </Link>{" "}
         lo traduce in un vincolo e te lo fa confermare prima di applicarlo. Sta
         in Vincoli, non nella pagina del piano.

@@ -447,6 +447,12 @@ dead, and it is still being trusted.
   fails with "permission denied" on a script that runs fine locally.
 - `npm run lint` takes over four minutes here. That is precisely why CI exists:
   a check that slow stops being run, and the lint was red on `main` for days.
+  It happened again on 19 August 2026, and the shape is worth knowing because
+  this UI is written in Italian: `react/no-unescaped-entities` rejects a bare
+  apostrophe in JSX **text**, so «L'assistente» fails while the identical
+  apostrophe inside a string prop or a comment passes. Typecheck, tests and
+  build were all green. Write `L&apos;assistente`, and note that Vercel builds
+  independently of CI — production deployed fine while CI stayed red.
 
 ### `settings.ai` looks authoritative and is not
 
