@@ -92,6 +92,7 @@ garantire copertura, monte ore o riposi, e non sarebbe riproducibile.
 │  ├─ 👥 lavoratori/                      Gestione lavoratori
 │  ├─ 🏢 postazioni/                      Gestione postazioni
 │  ├─ 📍 copertura/                       Matrice di copertura richiesta
+│  ├─ 🎉 festivita/                       Calendario festivo, patroni compresi
 │  ├─ 🔒 vincoli/                         Riposi minimi, giorni consecutivi, etc
 │  ├─ ⚙️  impostazioni/                    Ciclo di base 7h/7h/10h
 │  ├─ 📈 riepilogo/                       Statistiche e ore eccedenti

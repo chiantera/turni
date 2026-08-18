@@ -471,6 +471,26 @@ number to a code, ask whether it is demand at all. Some entries on a roster are
 requirements; others are what somebody chose to do with the margin, and only a
 person can tell you which — the frequency cannot.
 
+### A non-working day is not a day without coverage
+
+Two different things wear the word "festivo", and configuring coverage is where
+they get confused.
+
+August 2026 declares 24 `giorni lavorabili`, which is 31 days minus five
+Sundays minus Ferragosto minus one more — the Friday bridge. That number sets
+what the month **owes** each worker: 151.92 h instead of a full 25-day month.
+It says nothing about who has to be there. The roster shows 14 and 15 August
+staffed 14/14, exactly like any other day, because Stradora is residential and
+the residents do not go home for Ferragosto.
+
+So Stradora is right to have **no** `festivo` coverage rules at all: the solver
+falls back to the weekday rule when no holiday rule exists, which is precisely
+the wanted behaviour. Holiday rules are for services that *close* — Il Bruco,
+a weekday day project, carries two rows at `n_richiesti = 0`.
+
+Before adding a holiday rule, ask which of the two you mean. The payroll sense
+is already handled elsewhere and needs nothing here.
+
 ### Public copy must survive contact with the code
 
 The landing page claimed "Nessuna terza parte" while `lib/ai/estrazione.ts`

@@ -524,6 +524,43 @@ Restano tre codici non identificati, tutti marginali e segnalati dallo script:
 `CE` (una volta, DIMAS FERNANDES il 3 agosto) e `M`/`P` (11 volte, il
 tirocinante CARISI, che è disattivato e non entra nella copertura).
 
+### Il Bruco, presidiato il 18 agosto 2026
+
+`MAP` e `AP`, una persona ciascuna, **lunedì–venerdì** — detto dal coordinatore,
+non dedotto. 52,5 h/settimana, che portano la domanda totale a 777 h contro
+1050 di capacità. Nessuna notte al Bruco, il che chiude anche la questione `N`:
+non serve a nessuna delle due postazioni.
+
+Regge anche in un mese pesante come agosto, ma appena: sulle 236,7 h di margine
+Il Bruco ne prende 220,5 e ne restano 16,2. In un mese così, `PRG` e i doppi
+turni a mano non ci starebbero. In un mese normale il margine è 769 h.
+
+**Chiuso nelle festività**: due righe `tipo_giorno = 'festivo'` a zero. Attenzione
+al vincolo `coverage_giorno_coerente` — una riga festiva vuole
+`giorno_settimana` **nullo**, e l'indice unico è `nulls not distinct`, quindi ne
+esiste al massimo una per postazione e turno. È esattamente ciò che il solver
+richiede: cerca le regole festive per postazione e turno, senza il giorno della
+settimana, e se ne trova più di una valida solleva `ErroreCoperturaAmbigua`.
+Lo schema e il codice si tengono; non c'è modo di configurarlo male.
+
+### Le festività si gestiscono da `/festivita` (18 agosto 2026)
+
+La tabella `holidays` era popolata da un seed e **solo letta**: nessuna pagina
+la scriveva, quindi il patrono del paese non era aggiungibile. Ora c'è
+`app/festivita/`, con le RLS che esistevano già (lettura a tutti gli
+autenticati, scrittura ai pianificatori: nessuna migrazione).
+
+La pagina spiega una distinzione che il codice fa e il nome del campo non
+suggerisce: una data in `holidays` **conta sempre** come festivo lavorato per
+l'equità e per il riepilogo, mentre **cambia la copertura** solo se
+`usa_copertura_festiva` è attivo *e* la postazione ha una regola festiva. Le due
+cose sono indipendenti, e confonderle porta a configurare la copertura
+sbagliata.
+
+Non verificata a video: serve una sessione, e l'account per i test autenticati
+non esiste ancora. La rotta è nel manifesto della build ed è protetta dal
+middleware come le altre.
+
 ### Il passo che manca davvero
 
 Nulla di tutto questo è ancora stato messo alla prova nel modo che conta.

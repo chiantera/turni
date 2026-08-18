@@ -54,6 +54,7 @@ export function vociNavigazione(): VoceNavigazione[] {
     { href: "/postazioni", etichetta: "Postazioni" },
     { href: "/turni", etichetta: "Turni" },
     { href: "/copertura", etichetta: "Copertura" },
+    { href: "/festivita", etichetta: "Festività" },
     { href: "/vincoli", etichetta: "Vincoli" },
     { href: "/impostazioni", etichetta: "Impostazioni" },
   ]
