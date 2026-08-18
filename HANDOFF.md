@@ -420,8 +420,9 @@ trova quindi lo schema ma non l'anagrafica — è voluto.
 - **Tutti a 38 h settimanali** e tutti abilitati su entrambe le postazioni:
   nessuno dei due dati era nei documenti. Il prospetto di agosto ne ha
   identificato uno solo — CASALI, all'88,5 h contro 151,92 — e resta da sapere
-  se sono 22 o 24 h. Conta davvero: l'equità delle ore è misurata sullo scarto
-  dal contratto individuale.
+  se sono 22 o 24 h — impostate a **24 come massimale**, in attesa del contratto.
+  Conta davvero: l'equità delle ore è misurata sullo scarto dal contratto
+  individuale, e si corregge da `/lavoratori` senza toccare il codice.
 
 ## La copertura letta da un mese vero (18 agosto 2026)
 
@@ -477,12 +478,28 @@ consuma quasi tutto.
 
 ### Cosa resta aperto
 
-- **`C` non è in legenda** — 12 occorrenze: CAVALLI nei giorni 3, 28, 31 e GENNA
-  nove giorni di fila (15–23) prima delle ferie. Il conto delle ore cambia a
-  seconda che sia un'assenza: −3,0% sul contratto se lo è, −4,7% se non lo è.
-- **Chi è malato adesso non è in questo file.** Il PDF è compilato il 31 luglio:
-  ogni `MAL` che contiene inizia il giorno 1 e finisce entro il 9. GUIDETTI ha
-  lavorato 3 giorni su 31, ed è il profilo più vicino a un'assenza lunga.
+- **`C` non è in legenda, e resta ignoto** — 12 occorrenze: CAVALLI nei giorni
+  3, 28, 31 e GENNA nove giorni di fila (15–23) prima delle ferie. Non è
+  caricato come assenza. Il conto delle ore cambia a seconda che lo sia: −3,0%
+  sul contratto se sì, −4,7% se no. La domanda è annotata sulla scheda delle due
+  persone in `/lavoratori`, dove la vedrà chi può rispondere.
+
+Chiuse invece due voci che erano aperte: le malattie del prospetto sono quelle
+già programmate e sono tutte caricate (4 righe: BANDAOGO, RIZZO, SALVATORI,
+GUIDETTI, tutte entro il 9 agosto); CASALI è a 24 h.
+
+### Il passo che manca davvero
+
+Nulla di tutto questo è ancora stato messo alla prova nel modo che conta.
+Vale qui la regola già scritta in `AGENTS.md` per le migrazioni: **applicare una
+configurazione non è generare un piano.** Finché non si genera davvero un mese
+da `/pianificazione` e non si legge la colonna «Ore» della griglia, la copertura
+corretta è un numero che quadra su carta.
+
+Ora però esiste il metro di paragone che prima mancava: un mese fatto a mano
+dal coordinatore, con le stesse persone, gli stessi vincoli e le stesse assenze.
+Generare settembre e confrontarlo con agosto è il primo test end-to-end vero che
+questo progetto possa fare.
 
 ### Il ciclo di riferimento non si applica più
 
