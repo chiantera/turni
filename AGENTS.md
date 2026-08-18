@@ -463,6 +463,14 @@ of what does — and nothing warns you when you have silently used one as the
 other. Count occurrences over one real period first;
 `scripts/leggi-prospetto.py` does it from the coordinator's PDF.
 
+**Counting is not the whole answer either.** `PRG` turned out to have no rate at
+all: it is what the staff do when there is slack — they go out and buy clothing
+and supplies for the residents. Modelling it as coverage would have counted the
+same capacity twice, once as demand and once as availability. Before fitting a
+number to a code, ask whether it is demand at all. Some entries on a roster are
+requirements; others are what somebody chose to do with the margin, and only a
+person can tell you which — the frequency cannot.
+
 ### Public copy must survive contact with the code
 
 The landing page claimed "Nessuna terza parte" while `lib/ai/estrazione.ts`

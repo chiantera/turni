@@ -441,14 +441,26 @@ aggiustamenti a mano, non la regola.
 | | dedotto dalla legenda | misurato |
 |---|---|---|
 | `N` (notte 20:30–7:30) | 1/giorno → 77 h/sett | **mai usata**: agosto ha solo `N1` e `N2` |
-| `PRG` | 1/giorno → 42 h/sett | **15 turni in 31 giorni** → ~20 h/sett |
+| `PRG` | 1/giorno → 42 h/sett | **15 turni in 31 giorni**, e non è domanda |
 
-843,5 − 77 − 21,7 = **744,8 h/settimana**, e la parte fissa (724,5) coincide col
-prospetto all'ora. Il Bruco è a parte: 73,5 h/settimana, anch'esse dedotte allo
-stesso modo e mai verificate, quindi **messe a zero** in attesa del suo
-prospetto. Alcuni operatori del pool ci lavorano davvero (DESANTIS), ma quelle
-ore non stanno in questo documento — e DESANTIS è già al 105% del contratto
-sulla sola Stradora.
+843,5 − 77 − 42 = **724,5 h/settimana**, che coincide col prospetto all'ora.
+
+`N` **non serve a nessuno**: Stradora usa `N1` e `N2`, e Il Bruco non ha notti
+(confermato dal coordinatore). La sigla resta definita ma a copertura zero: un
+mese solo non basta a dichiararla morta, e disattivarla impedirebbe anche di
+assegnarla a mano.
+
+`PRG` **non è un fabbisogno, ed è definitivo**. Non si sapeva a quale cadenza
+metterlo; la risposta è che non ne ha una. È quello che gli operatori fanno
+quando c'è margine — escono a comprare vestiario e altre cose per gli ospiti.
+Modellarlo come copertura significherebbe contare due volte le stesse ore.
+
+Il Bruco (`MAP` e `AP`, nessuna notte) è confermato come postazione, ma il suo
+fabbisogno giornaliero non è mai stato verificato: le 73,5 h/settimana venivano
+dalla stessa deduzione che ha fallito per `N` e `PRG`, quindi sono **a zero** in
+attesa del suo prospetto. Alcuni operatori del pool ci lavorano davvero
+(DESANTIS), ma quelle ore non stanno in questo documento — e DESANTIS è già al
+105% del contratto sulla sola Stradora.
 
 **Applicato e verificato il 18 agosto 2026.** `n_richiesti = 0` su `N` e `PRG`
 (Stradora) e su `MAP` e `AP` (Il Bruco): 28 righe. La domanda letta dal database
@@ -457,11 +469,28 @@ prospetto. Il conto si chiude fino all'ultima ora: 724,5 × 31/7 = 3208,5 h di
 copertura fissa mensile contro le 3250,5 h che il coordinatore ha assegnato, e
 le 42 h di differenza sono le sue **6 celle in più nette** (≈ 7 h l'una).
 
-Attenzione al 68% che ne esce: confronta la domanda con la capacità *piena*. Ad
-agosto c'erano 165 giorni di assenza su 868 persona-giorno, il 19% della forza:
-su quella base l'impegno reale era **84%**, e il personale ha infatti lavorato al
-97% del proprio contratto. Il margine esiste, ma un mese di ferie pesanti lo
-consuma quasi tutto.
+### Il 69% del cruscotto non è margine libero
+
+Il rapporto domanda/capacità che si legge in `/copertura` confronta la copertura
+fissa con la capacità **piena**, e fa sembrare che un terzo dell'organico sia
+inutilizzato. Il mese vero dice altro. Ad agosto:
+
+```
+copertura fissa richiesta      3208,5 h    (93% del contratto disponibile)
+contratto disponibile          3445,2 h    (al netto di 172 giornate di assenza)
+margine                         236,7 h
+  assorbito da PRG               90,0 h    15 turni da 6 h
+  doppi turni messi a mano       42,0 h    le 6 celle in più del coordinatore
+  residuo non lavorato          104,7 h    3,0% del contratto
+```
+
+Il margine non resta lì: **`PRG` è ciò che il coordinatore fa col margine.**
+Ecco perché non va modellato come fabbisogno — sarebbe la stessa capacità
+contata due volte, prima come domanda e poi come disponibilità.
+
+Il numero da guardare è quindi 93%, non 69%. Con 172 giornate di assenza su 868
+persona-giorno — il 19% della forza — un mese di ferie pesanti consuma quasi
+tutto ciò che sembrava avanzare.
 
 **Altro che il prospetto ha corretto:**
 
